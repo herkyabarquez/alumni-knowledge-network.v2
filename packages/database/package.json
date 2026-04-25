@@ -1,0 +1,16 @@
+{
+  "name": "@akn/database",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "dependencies": {
+    "@prisma/client": "latest"
+  },
+  "devDependencies": {
+    "prisma": "latest"
+  },
+  "scripts": {
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio"
+  }
+}

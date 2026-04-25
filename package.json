@@ -1,0 +1,12 @@
+{
+  "name": "alumni-knowledge-network",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --parallel -r dev",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
