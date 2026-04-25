@@ -4,7 +4,8 @@
   "scripts": {
     "dev": "pnpm --parallel -r dev",
     "build": "pnpm -r build",
-    "test": "pnpm -r test"
+    "test": "pnpm -r test",
+    "seed": "pnpm --filter @akn/database prisma db seed"
   },
   "devDependencies": {
     "typescript": "^5.0.0"
