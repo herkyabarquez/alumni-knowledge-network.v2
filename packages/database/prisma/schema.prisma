@@ -1,0 +1,63 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+  SUPERADMIN
+}
+
+enum RequestStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  name           String?
+  profilePic     String?
+  role           Role     @default(USER)
+  bio            String?
+  industry       String?
+  batch          String?
+  
+  posts          Post[]
+  
+  sentRequests   MentorshipRequest[] @relation("SentRequests")
+  receivedRequests MentorshipRequest[] @relation("ReceivedRequests")
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Post {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model MentorshipRequest {
+  id         String        @id @default(cuid())
+  studentId  String
+  student    User          @relation("SentRequests", fields: [studentId], references: [id])
+  alumniId   String
+  alumni     User          @relation("ReceivedRequests", fields: [alumniId], references: [id])
+  status     RequestStatus @default(PENDING)
+  message    String?
+  
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+}
