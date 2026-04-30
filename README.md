@@ -21,9 +21,9 @@ The Alumni Knowledge Network is a dedicated platform designed to bridge the gap 
 
 - **Frontend**: Svelte 5, SvelteKit, Tailwind CSS v4
 - **Backend**: NestJS, Prisma ORM
-- **Database**: PostgreSQL (via Supabase/RDS)
+- **Database**: PostgreSQL (AWS RDS)
 - **Authentication**: Auth0
-- **Hosting**: AWS Amplify (Frontend)
+- **Cloud Infrastructure**: Amazon Web Services (AWS)
 
 ## Getting Started
 
