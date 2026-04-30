@@ -1,7 +1,11 @@
 @import 'tailwindcss';
 
-@theme {
+:root {
   --color-neutral-950: #050505;
+}
+
+:global(html) {
+	scroll-behavior: smooth;
 }
 
 :global(body) {

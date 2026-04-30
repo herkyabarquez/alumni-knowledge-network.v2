@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { fly } from 'svelte/transition';
 	import { api } from '$lib/api';
 	import { isAuthenticated } from '$lib/authService';
 
@@ -88,8 +89,9 @@
 		</div>
 	{:else}
 		<div class="space-y-6">
-			{#each posts as post}
+			{#each posts as post, i}
 				<div
+					in:fly={{ y: 20, duration: 300, delay: i * 50 }}
 					class="group rounded-2xl border border-neutral-800 bg-neutral-900/50 p-8 transition-all hover:border-neutral-700"
 				>
 					<div class="mb-4 flex items-start justify-between">

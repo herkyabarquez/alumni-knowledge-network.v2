@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { fly } from 'svelte/transition';
 	import { api } from '$lib/api';
 	import { user } from '$lib/authService';
 
@@ -68,8 +69,11 @@
 					</tr>
 				</thead>
 				<tbody>
-					{#each users as u}
-						<tr class="border-b border-neutral-800/50 transition-colors hover:bg-neutral-800/20">
+					{#each users as u, i}
+						<tr 
+							in:fly={{ y: 10, duration: 200, delay: i * 30 }}
+							class="border-b border-neutral-800/50 transition-colors hover:bg-neutral-800/20"
+						>
 							<td class="px-8 py-4 font-medium text-white">{u.name || 'N/A'}</td>
 							<td class="px-8 py-4 text-sm text-neutral-400">{u.email}</td>
 							<td class="px-8 py-4">

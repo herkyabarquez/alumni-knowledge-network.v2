@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { fly, fade } from 'svelte/transition';
 	import { api } from '$lib/api';
 	import { user, isAuthenticated } from '$lib/authService';
 
@@ -65,8 +66,11 @@
 						<p class="text-neutral-500 italic">No active requests.</p>
 					{:else}
 						<div class="space-y-4">
-							{#each requests as req}
-								<div class="rounded-2xl border border-neutral-800 bg-neutral-900/50 p-6">
+							{#each requests as req, i}
+								<div 
+									in:fly={{ y: 20, duration: 300, delay: i * 50 }}
+									class="rounded-2xl border border-neutral-800 bg-neutral-900/50 p-6"
+								>
 									<div class="mb-4 flex items-start justify-between">
 										<div>
 											<p class="text-sm text-neutral-500">
@@ -127,9 +131,10 @@
 					<div
 						class="scrollbar-thin scrollbar-thumb-neutral-800 grid max-h-[500px] grid-cols-1 gap-4 overflow-y-auto pr-2"
 					>
-						{#each alumniList.filter((a) => a.id !== $user?.id) as alum}
+						{#each alumniList.filter((a) => a.id !== $user?.id) as alum, i}
 							<div
-								class="flex items-center justify-between rounded-xl border border-neutral-800 bg-neutral-900/30 p-4"
+								in:fly={{ y: 20, duration: 300, delay: i * 50 }}
+								class="flex items-center justify-between rounded-xl border border-neutral-800 bg-neutral-900/30 p-4 transition-colors hover:border-neutral-700"
 							>
 								<div>
 									<h3 class="font-bold text-white">{alum.name}</h3>
@@ -162,9 +167,11 @@
 
 {#if selectedAlumni}
 	<div
+		transition:fade={{ duration: 200 }}
 		class="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
 	>
 		<div
+			in:fly={{ y: 50, duration: 400, delay: 100 }}
 			class="w-full max-w-md space-y-6 rounded-3xl border border-neutral-800 bg-neutral-900 p-8 shadow-2xl"
 		>
 			<div>
