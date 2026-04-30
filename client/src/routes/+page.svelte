@@ -25,6 +25,9 @@
 
 		<div class="mx-auto max-w-7xl px-6 lg:px-8">
 			<div class="mx-auto max-w-2xl text-center">
+				<div class="mb-8 flex justify-center">
+					<img src="/logo.png?v=4" alt="AKN Logo" class="h-20 w-auto invert opacity-80" />
+				</div>
 				<h1
 					class="bg-gradient-to-b from-white to-neutral-400 bg-clip-text text-5xl font-bold tracking-tight text-transparent sm:text-7xl"
 				>
