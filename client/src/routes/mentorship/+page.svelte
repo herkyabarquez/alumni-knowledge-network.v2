@@ -54,13 +54,13 @@
 
 <div class="mx-auto max-w-6xl space-y-16 px-4 py-12">
 	<section>
-		<h1 class="mb-8 text-3xl font-bold">Mentorship Center</h1>
+		<h1 class="mb-8 text-3xl font-bold text-white">Mentorship Center</h1>
 
 		{#if $isAuthenticated}
 			<div class="grid grid-cols-1 gap-12 lg:grid-cols-2">
 				<!-- My Requests -->
 				<div class="space-y-6">
-					<h2 class="text-xl font-semibold">My Requests</h2>
+					<h2 class="text-xl font-semibold text-white">My Requests</h2>
 					{#if requests.length === 0}
 						<p class="text-neutral-500 italic">No active requests.</p>
 					{:else}
@@ -114,7 +114,7 @@
 
 				<!-- Find Alumni -->
 				<div class="space-y-6">
-					<h2 class="text-xl font-semibold">Find an Alumni</h2>
+					<h2 class="text-xl font-semibold text-white">Find an Alumni</h2>
 					<div class="flex gap-2">
 						<input
 							bind:value={search.industry}
@@ -132,7 +132,7 @@
 								class="flex items-center justify-between rounded-xl border border-neutral-800 bg-neutral-900/30 p-4"
 							>
 								<div>
-									<h3 class="font-bold">{alum.name}</h3>
+									<h3 class="font-bold text-white">{alum.name}</h3>
 									<p class="text-xs text-neutral-500">
 										{alum.industry || 'General'} • Batch {alum.batch || 'N/A'}
 									</p>
