@@ -13,13 +13,14 @@
 </script>
 
 <svelte:head>
-	<link rel="icon" href={favicon} />
+	<link rel="icon" href="/logo.png?v=4" />
 </svelte:head>
 
 {#if $loading}
-	<div class="fixed inset-0 flex items-center justify-center bg-neutral-950">
+	<div class="fixed inset-0 flex flex-col items-center justify-center bg-neutral-950 gap-6">
+		<img src="/logo.png?v=4" alt="AKN Logo" class="h-16 w-auto invert animate-pulse opacity-50" />
 		<div
-			class="h-8 w-8 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent"
+			class="h-6 w-6 animate-spin rounded-full border-2 border-indigo-500/30 border-t-indigo-500"
 		></div>
 	</div>
 {:else}
