@@ -32,7 +32,7 @@
 <div class="mx-auto max-w-7xl px-4 py-12">
 	<div class="mb-12 flex items-center justify-between">
 		<div>
-			<h1 class="text-3xl font-bold">Admin Dashboard</h1>
+			<h1 class="text-3xl font-bold text-white">Admin Dashboard</h1>
 			<p class="text-neutral-500">Manage users and system roles</p>
 		</div>
 	</div>
@@ -70,7 +70,7 @@
 				<tbody>
 					{#each users as u}
 						<tr class="border-b border-neutral-800/50 transition-colors hover:bg-neutral-800/20">
-							<td class="px-8 py-4 font-medium">{u.name || 'N/A'}</td>
+							<td class="px-8 py-4 font-medium text-white">{u.name || 'N/A'}</td>
 							<td class="px-8 py-4 text-sm text-neutral-400">{u.email}</td>
 							<td class="px-8 py-4">
 								<span

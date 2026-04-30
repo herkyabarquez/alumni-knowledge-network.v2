@@ -30,9 +30,3 @@
 	</main>
 {/if}
 
-<style>
-	:global(body) {
-		background-color: #0a0a0a;
-		margin: 0;
-	}
-</style>
