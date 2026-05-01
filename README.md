@@ -90,10 +90,10 @@ This project is configured for deployment on AWS Amplify. For detailed instructi
 
 The development and design of this project were made possible by:
 
-- **Aven**
-- **Herky**
-- **Boris**
-- **Ang**
+- **John Raiven Olazo**
+- **Herky Dee Abarquez**
+- **Boris Gamaliel Duque**
+- **Prince Cyrus Andres Ang**
 
 ## License
 
