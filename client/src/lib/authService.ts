@@ -47,11 +47,7 @@ export async function initAuth() {
 }
 
 export async function login() {
-	await auth0.loginWithRedirect({
-		authorizationParams: {
-			connection: 'google-oauth2'
-		}
-	});
+	await auth0.loginWithRedirect();
 }
 
 export async function logout() {
