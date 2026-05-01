@@ -61,10 +61,16 @@
 
 				<div class="flex-grow space-y-4">
 					<div class="flex items-start justify-between">
-						<div>
+						<div class="flex flex-wrap items-center gap-3">
 							<h1 class="text-4xl font-bold">{profileUser.name}</h1>
-							<p class="text-neutral-500">{profileUser.email}</p>
+							<span class="rounded-full px-3 py-1 text-[10px] font-black tracking-widest uppercase border
+								{profileUser.role === 'SUPERADMIN' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : 
+								 profileUser.role === 'ADMIN' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' : 
+								 'bg-neutral-800 text-neutral-500 border-neutral-700'}">
+								{profileUser.role || 'User'}
+							</span>
 						</div>
+						<p class="text-neutral-500">{profileUser.email}</p>
 						{#if isMyProfile && !isEditing}
 							<button
 								onclick={() => (isEditing = true)}

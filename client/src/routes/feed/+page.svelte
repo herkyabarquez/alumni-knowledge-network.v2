@@ -123,6 +123,16 @@
 									<span class="font-medium text-neutral-300"
 										>{post.author?.name || 'Anonymous'}</span
 									>
+									{#if post.author?.role === 'ADMIN' || post.author?.role === 'SUPERADMIN'}
+										<span
+											class="rounded-full px-2 py-0.5 text-[9px] font-bold tracking-tighter uppercase
+                      {post.author.role === 'SUPERADMIN'
+												? 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
+												: 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'}"
+										>
+											{post.author.role}
+										</span>
+									{/if}
 									<span>•</span>
 									<span>{post.author?.industry || 'General'}</span>
 									<span>•</span>

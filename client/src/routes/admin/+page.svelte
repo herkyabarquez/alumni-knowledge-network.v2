@@ -47,10 +47,29 @@
 </script>
 
 <div class="mx-auto max-w-7xl px-4 py-12">
-	<div class="mb-12 flex items-center justify-between">
-		<div>
-			<h1 class="text-3xl font-bold text-white">Admin Dashboard</h1>
-			<p class="text-neutral-500">Manage users and system roles</p>
+	<div class="mb-12">
+		<div class="flex items-center gap-4 mb-2">
+			<div class="rounded-xl bg-indigo-500/10 p-2 text-indigo-400">
+				<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m14 8 2 2-2 2"/></svg>
+			</div>
+			<h1 class="text-3xl font-bold text-white tracking-tight">Admin Control Center</h1>
+		</div>
+		<p class="text-neutral-500">Manage user roles, monitor network activity, and enforce community standards.</p>
+	</div>
+
+	<!-- Stats Grid -->
+	<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+		<div class="rounded-2xl border border-neutral-800 bg-neutral-900/50 p-6">
+			<p class="text-sm font-medium text-neutral-500 mb-1 text-uppercase tracking-wider">Total Network Members</p>
+			<p class="text-3xl font-bold text-white">{users.length}</p>
+		</div>
+		<div class="rounded-2xl border border-neutral-800 bg-neutral-900/50 p-6">
+			<p class="text-sm font-medium text-neutral-500 mb-1 text-uppercase tracking-wider">Admins & Staff</p>
+			<p class="text-3xl font-bold text-indigo-400">{users.filter(u => u.role !== 'USER').length}</p>
+		</div>
+		<div class="rounded-2xl border border-neutral-800 bg-neutral-900/50 p-6">
+			<p class="text-sm font-medium text-neutral-500 mb-1 text-uppercase tracking-wider">Active Roles</p>
+			<p class="text-3xl font-bold text-emerald-400">3</p>
 		</div>
 	</div>
 
@@ -66,7 +85,11 @@
 			<p class="text-sm">{error}</p>
 		</div>
 	{:else}
-		<div class="overflow-x-auto rounded-3xl border border-neutral-800 bg-neutral-900/50">
+	<div class="overflow-hidden rounded-3xl border border-neutral-800 bg-neutral-900/50 shadow-2xl">
+		<div class="bg-neutral-800/30 px-8 py-4 border-b border-neutral-800">
+			<h2 class="text-lg font-bold text-white">User Directory</h2>
+		</div>
+		<div class="overflow-x-auto">
 			<table class="w-full border-collapse text-left">
 				<thead>
 					<tr class="border-b border-neutral-800">
