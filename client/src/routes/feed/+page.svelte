@@ -129,7 +129,7 @@
 									<span>{new Date(post.createdAt).toLocaleDateString()}</span>
 								</div>
 							</div>
-							{#if $user?.id === post.authorId || $user?.role === 'ADMIN' || $user?.role === 'SUPERADMIN'}
+							{#if $user?.id === post.authorId || $user?.id === post.author?.id || $user?.role === 'ADMIN' || $user?.role === 'SUPERADMIN'}
 								<button
 									onclick={() => handleDelete(post.id)}
 									class="rounded-lg p-2 text-neutral-500 transition-colors hover:bg-red-500/10 hover:text-red-500"
