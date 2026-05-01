@@ -8,6 +8,7 @@ import { UsersModule } from './users/users.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { PostsModule } from './posts/posts.module';
 import { MentorshipModule } from './mentorship/mentorship.module';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { MentorshipModule } from './mentorship/mentorship.module';
     PrismaModule,
     PostsModule,
     MentorshipModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService, UsersService],

@@ -26,4 +26,18 @@ export interface MentorshipRequest {
 	createdAt: string;
 	student: User;
 	alumni: User;
+	messages?: Message[];
+}
+
+export interface Message {
+	id: string;
+	content: string;
+	senderId: string;
+	receiverId: string;
+	requestId: string;
+	createdAt: string;
+	sender?: {
+		name: string;
+		profilePic?: string;
+	};
 }
