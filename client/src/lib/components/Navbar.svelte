@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { user, isAuthenticated, login, logout } from '$lib/authService';
+	import { user, isAuthenticated, loading, login, logout } from '$lib/authService';
 	import { base } from '$app/paths';
 </script>
 

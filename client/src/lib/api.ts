@@ -6,7 +6,7 @@ async function request(path: string, method = 'GET', body?: any) {
 	let token: string | null = null;
 	try {
 		token = await getToken();
-	} catch (e) {
+	} catch {
 		// Not logged in or error
 	}
 
