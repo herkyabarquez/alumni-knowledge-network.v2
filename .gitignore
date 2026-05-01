@@ -37,3 +37,9 @@ Thumbs.db
 # Prisma
 /packages/database/generated/
 schema.prisma.lock
+
+# Binaries
+aws/
+docker/
+awscliv2.zip
+docker.tgz
