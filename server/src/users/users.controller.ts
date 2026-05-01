@@ -16,7 +16,10 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { Role } from '@akn/database';
-import { AuthenticatedRequest } from '../auth/request.interface';
+
+interface AuthenticatedRequest extends Request {
+  user: { id: string; email: string; role: Role; name?: string };
+}
 
 @Controller('users')
 export class UsersController {
@@ -36,7 +39,6 @@ export class UsersController {
   @UseGuards(JwtAuthGuard)
   @Patch('me')
   updateMe(@Req() req: AuthenticatedRequest, @Body() body: any) {
-    // Prevent self-role changing via this endpoint
     delete body.role;
     return this.usersService.update(req.user.id, body);
   }
@@ -68,13 +70,8 @@ export class UsersController {
   ) {
     const actorRole = req.user.role;
     const actorId = req.user.id;
-
-    // Fetch target user to check their current role
     const targetUser = await this.usersService.findOne(targetId);
 
-    // Hierarchy Logic:
-    // 1. Only SUPERADMIN can promote/demote other ADMINs or SUPERADMINs.
-    // 2. ADMIN can only manage USERs.
     if (actorRole === Role.ADMIN) {
       if (
         targetUser.role !== Role.USER ||
@@ -84,13 +81,12 @@ export class UsersController {
       }
     }
 
-    // Prevent self-demotion of the last Superadmin (safety check)
     if (
       actorId === targetId &&
       actorRole === Role.SUPERADMIN &&
       body.role !== Role.SUPERADMIN
     ) {
-      // Optional: Add logic to check if there are other Superadmins
+      // Safety check
     }
 
     return this.usersService.changeRole(targetId, body.role);

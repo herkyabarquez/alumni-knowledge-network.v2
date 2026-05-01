@@ -10,7 +10,11 @@ import {
 } from '@nestjs/common';
 import { PostsService } from './posts.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { AuthenticatedRequest } from '../auth/request.interface';
+import { Role } from '@akn/database';
+
+interface AuthenticatedRequest extends Request {
+  user: { id: string; email: string; role: Role; name?: string };
+}
 
 @Controller('posts')
 export class PostsController {
