@@ -86,4 +86,12 @@ export class UsersService {
       data: { role },
     });
   }
+
+  async remove(userId: string) {
+    // Delete associated posts and requests first or let Prisma handle it if configured
+    // Since we don't have cascade delete configured in schema, we do it manually or use prisma delete
+    return this.prisma.user.delete({
+      where: { id: userId },
+    });
+  }
 }

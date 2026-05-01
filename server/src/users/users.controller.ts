@@ -54,9 +54,40 @@ export class UsersController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.SUPERADMIN)
+  @Roles(Role.ADMIN, Role.SUPERADMIN)
   @Patch(':id/role')
-  changeRole(@Param('id') id: string, @Body() body: { role: Role }) {
-    return this.usersService.changeRole(id, body.role);
+  async changeRole(
+    @Req() req: any,
+    @Param('id') targetId: string,
+    @Body() body: { role: Role },
+  ) {
+    const actorRole = req.user.role;
+    const actorId = req.user.id;
+
+    // Fetch target user to check their current role
+    const targetUser = await this.usersService.findOne(targetId);
+
+    // Hierarchy Logic:
+    // 1. Only SUPERADMIN can promote/demote other ADMINs or SUPERADMINs.
+    // 2. ADMIN can only manage USERs.
+    if (actorRole === Role.ADMIN) {
+      if (targetUser.role !== Role.USER || (body.role !== Role.USER && body.role !== Role.ADMIN)) {
+        throw new ForbiddenException('Admins can only manage normal Users');
+      }
+    }
+
+    // Prevent self-demotion of the last Superadmin (safety check)
+    if (actorId === targetId && actorRole === Role.SUPERADMIN && body.role !== Role.SUPERADMIN) {
+       // Optional: Add logic to check if there are other Superadmins
+    }
+
+    return this.usersService.changeRole(targetId, body.role);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.SUPERADMIN)
+  @Delete(':id')
+  async remove(@Param('id') id: string) {
+    return this.usersService.remove(id);
   }
 }

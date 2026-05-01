@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { fly } from 'svelte/transition';
 	import { api } from '$lib/api';
-	import { isAuthenticated } from '$lib/authService';
+	import { isAuthenticated, user } from '$lib/authService';
 
 	import { type Post } from '$lib/types';
 
@@ -30,6 +30,16 @@
 			newPost = { title: '', content: '' };
 		} catch (e: unknown) {
 			error = (e as Error).message;
+		}
+	}
+
+	async function handleDelete(postId: string) {
+		if (!confirm('Are you sure you want to delete this post?')) return;
+		try {
+			await api.delete(`/posts/${postId}`);
+			posts = posts.filter((p) => p.id !== postId);
+		} catch (e: unknown) {
+			alert((e as Error).message);
 		}
 	}
 
@@ -119,6 +129,28 @@
 									<span>{new Date(post.createdAt).toLocaleDateString()}</span>
 								</div>
 							</div>
+							{#if $user?.id === post.authorId || $user?.role === 'ADMIN' || $user?.role === 'SUPERADMIN'}
+								<button
+									onclick={() => handleDelete(post.id)}
+									class="rounded-lg p-2 text-neutral-500 transition-colors hover:bg-red-500/10 hover:text-red-500"
+									title="Delete post"
+								>
+									<svg
+										xmlns="http://www.w3.org/2000/svg"
+										width="20"
+										height="20"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+									><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path
+											d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"
+										/></svg
+									>
+								</button>
+							{/if}
 						</div>
 						<p class="line-clamp-3 leading-relaxed text-neutral-400">
 							{post.content}

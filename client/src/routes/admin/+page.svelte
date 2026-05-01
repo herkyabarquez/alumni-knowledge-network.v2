@@ -28,6 +28,17 @@
 		}
 	}
 
+	async function removeUser(userId: string) {
+		if (!confirm('Are you sure you want to permanently delete this user? This action cannot be undone.'))
+			return;
+		try {
+			await api.delete(`/users/${userId}`);
+			await loadUsers();
+		} catch (e: unknown) {
+			alert((e as Error).message);
+		}
+	}
+
 	onMount(loadUsers);
 </script>
 
@@ -91,15 +102,37 @@
 							</td>
 							<td class="px-8 py-4">
 								{#if u.id !== $user?.id && $user?.role === 'SUPERADMIN'}
-									<select
-										onchange={(e) => changeRole(u.id, e.target.value)}
-										class="rounded-lg border border-neutral-800 bg-neutral-950 px-2 py-1 text-xs outline-none focus:border-indigo-500"
-										value={u.role}
-									>
-										<option value="USER">Make User</option>
-										<option value="ADMIN">Make Admin</option>
-										<option value="SUPERADMIN">Make Superadmin</option>
-									</select>
+									<div class="flex items-center gap-3">
+										<select
+											onchange={(e) => changeRole(u.id, e.target.value)}
+											class="rounded-lg border border-neutral-800 bg-neutral-950 px-2 py-1 text-xs outline-none focus:border-indigo-500"
+											value={u.role}
+										>
+											<option value="USER">Make User</option>
+											<option value="ADMIN">Make Admin</option>
+											<option value="SUPERADMIN">Make Superadmin</option>
+										</select>
+										<button
+											onclick={() => removeUser(u.id)}
+											class="rounded-lg p-2 text-neutral-600 transition-colors hover:bg-red-500/10 hover:text-red-500"
+											title="Delete user"
+										>
+											<svg
+												xmlns="http://www.w3.org/2000/svg"
+												width="16"
+												height="16"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+												stroke-linecap="round"
+												stroke-linejoin="round"
+											><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path
+													d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"
+												/></svg
+											>
+										</button>
+									</div>
 								{:else}
 									<span class="text-xs text-neutral-600">No actions</span>
 								{/if}
