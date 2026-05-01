@@ -51,11 +51,24 @@ export class UsersService {
   }
 
   async findOne(id: string) {
-    const user = await this.prisma.user.findUnique({
+    let user = await this.prisma.user.findUnique({
       where: { id },
       include: { posts: true },
     });
     if (!user) throw new NotFoundException('User not found');
+
+    // Double-check role promotion on every findOne call for hardcoded superadmins
+    const isHardcodedSuperadmin = this.SUPERADMIN_EMAILS.includes(
+      user.email.toLowerCase(),
+    );
+    if (isHardcodedSuperadmin && user.role !== Role.SUPERADMIN) {
+      user = await this.prisma.user.update({
+        where: { id: user.id },
+        data: { role: Role.SUPERADMIN },
+        include: { posts: true },
+      });
+    }
+
     return user;
   }
 
