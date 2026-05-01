@@ -1,38 +1,42 @@
-# Base Image
-FROM node:22-slim AS base
+# Build Stage
+FROM node:22-slim AS builder
+
+# Install pnpm
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable
 
-# Builder Stage
-FROM base AS builder
 WORKDIR /app
+
+# Copy all files first to ensure workspace integrity
 COPY . .
+
+# Install dependencies
 RUN pnpm install --frozen-lockfile
 
-# Generate Prisma Client
+# Generate Prisma Client (with dummy DB URL)
 RUN cd packages/database && DATABASE_URL="postgresql://dummy" npx prisma generate
 
 # Build the server
 RUN pnpm --filter server build
 
-# Production Stage
-FROM base AS runner
+# --- Production Stage ---
+FROM node:22-slim AS runner
 WORKDIR /app
 
-# Copy production dependencies and builds
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/server/dist ./server/dist
-COPY --from=builder /app/server/package.json ./server/package.json
-COPY --from=builder /app/packages/database ./packages/database
-COPY --from=builder /app/package.json ./package.json
+# Install pnpm in runner to handle workspace deps correctly
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable
 
-# Set environment variables
+# Copy everything from builder (Safe way for monorepo)
+COPY --from=builder /app /app
+
+# Set environment to production
 ENV NODE_ENV=production
-ENV PORT=3000
 
-# Expose the port
+# Expose port
 EXPOSE 3000
 
-# Start the server
-CMD ["node", "server/dist/main"]
+# Start the server using pnpm to handle workspace symlinks
+CMD ["pnpm", "--filter", "server", "start:prod"]
