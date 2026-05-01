@@ -43,7 +43,9 @@
 				</div>
 			</div>
 			<div class="flex items-center gap-4">
-				{#if $isAuthenticated}
+				{#if $loading}
+					<div class="h-8 w-20 animate-pulse rounded-full bg-neutral-800"></div>
+				{:else if $isAuthenticated}
 					<a href="{base}/profile/me" class="group flex items-center gap-2">
 						<span class="text-sm text-neutral-300 transition-colors group-hover:text-white"
 							>{$user?.name || 'Profile'}</span
