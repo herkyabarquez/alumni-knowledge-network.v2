@@ -35,7 +35,7 @@ export async function initAuth() {
 
 	if (isAuth) {
 		const userData = await auth0.getUser();
-		user.set(userData);
+		user.set(userData ?? null);
 	}
 
 	loading.set(false);
