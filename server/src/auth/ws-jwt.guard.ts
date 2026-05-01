@@ -2,11 +2,21 @@ import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { WsException } from '@nestjs/websockets';
 import { Socket } from 'socket.io';
 import * as jwt from 'jsonwebtoken';
-import { jwksRestful } from 'jwks-rsa';
-import { passportJwtSecret } from 'jwks-rsa';
+import { JwksClient } from 'jwks-rsa';
 
 @Injectable()
 export class WsJwtGuard implements CanActivate {
+  private jwksClient: JwksClient;
+
+  constructor() {
+    this.jwksClient = new JwksClient({
+      jwksUri: `https://${process.env.AUTH0_DOMAIN}/.well-known/jwks.json`,
+      cache: true,
+      rateLimit: true,
+      jwksRequestsPerMinute: 5,
+    });
+  }
+
   async canActivate(context: ExecutionContext): Promise<boolean> {
     try {
       const client: Socket = context.switchToWs().getClient();
@@ -18,16 +28,18 @@ export class WsJwtGuard implements CanActivate {
 
       const cleanToken = token.replace('Bearer ', '');
       
-      // Verify the token using Auth0's JWKS
       const payload = await new Promise((resolve, reject) => {
         jwt.verify(
           cleanToken,
-          passportJwtSecret({
-            cache: true,
-            rateLimit: true,
-            jwksRequestsPerMinute: 5,
-            jwksUri: `https://${process.env.AUTH0_DOMAIN}/.well-known/jwks.json`,
-          }),
+          (header, callback) => {
+            this.jwksClient.getSigningKey(header.kid, (err, key) => {
+              if (err) {
+                return callback(err);
+              }
+              const signingKey = key?.getPublicKey();
+              callback(null, signingKey);
+            });
+          },
           {
             audience: process.env.AUTH0_AUDIENCE,
             issuer: `https://${process.env.AUTH0_DOMAIN}/`,
@@ -35,7 +47,6 @@ export class WsJwtGuard implements CanActivate {
           },
           (err, decoded) => {
             if (err) {
-              console.error('WS JWT Verification Error:', err.message);
               return reject(err);
             }
             resolve(decoded);
