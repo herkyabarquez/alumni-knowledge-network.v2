@@ -22,8 +22,22 @@ export interface MentorshipRequest {
 	studentId: string;
 	alumniId: string;
 	message: string;
-	status: 'PENDING' | 'ACCEPTED' | 'DECLINED';
+	status: 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED';
 	createdAt: string;
 	student: User;
 	alumni: User;
+	messages?: Message[];
+}
+
+export interface Message {
+	id: string;
+	content: string;
+	senderId: string;
+	receiverId: string;
+	requestId: string;
+	createdAt: string;
+	sender?: {
+		name: string;
+		profilePic?: string;
+	};
 }

@@ -2,7 +2,8 @@
 	import { onMount } from 'svelte';
 	import { fly } from 'svelte/transition';
 	import { api } from '$lib/api';
-	import { isAuthenticated } from '$lib/authService';
+	import { isAuthenticated, user, loading as authLoading } from '$lib/authService';
+	import { goto } from '$app/navigation';
 
 	import { type Post } from '$lib/types';
 
@@ -12,6 +13,7 @@
 	let error = $state('');
 
 	async function loadPosts() {
+		if (!$isAuthenticated) return;
 		try {
 			posts = await api.get('/posts');
 		} catch (e: unknown) {
@@ -33,24 +35,33 @@
 		}
 	}
 
+	async function handleDelete(postId: string) {
+		if (!confirm('Are you sure you want to delete this post?')) return;
+		try {
+			await api.delete(`/posts/${postId}`);
+			posts = posts.filter((p) => p.id !== postId);
+		} catch (e: unknown) {
+			alert((e as Error).message);
+		}
+	}
+
+	onMount(() => {
+		if (!$authLoading && !$isAuthenticated) {
+			goto('/login');
+		} else if (!$authLoading && $isAuthenticated) {
+			loadPosts();
+		}
+	});
+
 	if (!import.meta.env.VITE_AUTH0_DOMAIN || !import.meta.env.VITE_AUTH0_CLIENT_ID) {
 		console.warn('Auth0 credentials missing. Authentication will be disabled.');
 		loading = false;
-	} else {
-		onMount(loadPosts);
 	}
 </script>
 
 <div class="mx-auto max-w-4xl px-4 py-12">
 	<div class="mb-12 flex items-center justify-between">
 		<h1 class="text-3xl font-bold text-white">Knowledge Feed</h1>
-		{#if $isAuthenticated}
-			<button
-				class="rounded-lg bg-indigo-600 px-4 py-2 text-white transition-colors hover:bg-indigo-700"
-			>
-				Create Post
-			</button>
-		{/if}
 	</div>
 
 	{#if $isAuthenticated}
@@ -113,12 +124,44 @@
 									<span class="font-medium text-neutral-300"
 										>{post.author?.name || 'Anonymous'}</span
 									>
+									{#if post.author?.role === 'ADMIN' || post.author?.role === 'SUPERADMIN'}
+										<span
+											class="rounded-full px-2 py-0.5 text-[9px] font-bold tracking-tighter uppercase
+                      {post.author.role === 'SUPERADMIN'
+												? 'border border-purple-500/20 bg-purple-500/10 text-purple-400'
+												: 'border border-indigo-500/20 bg-indigo-500/10 text-indigo-400'}"
+										>
+											{post.author.role}
+										</span>
+									{/if}
 									<span>•</span>
 									<span>{post.author?.industry || 'General'}</span>
 									<span>•</span>
 									<span>{new Date(post.createdAt).toLocaleDateString()}</span>
 								</div>
 							</div>
+							{#if $user?.id === post.authorId || $user?.id === post.author?.id || $user?.role === 'ADMIN' || $user?.role === 'SUPERADMIN'}
+								<button
+									onclick={() => handleDelete(post.id)}
+									class="rounded-lg p-2 text-neutral-500 transition-colors hover:bg-red-500/10 hover:text-red-500"
+									title="Delete post"
+								>
+									<svg
+										xmlns="http://www.w3.org/2000/svg"
+										width="20"
+										height="20"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path
+											d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"
+										/></svg
+									>
+								</button>
+							{/if}
 						</div>
 						<p class="line-clamp-3 leading-relaxed text-neutral-400">
 							{post.content}

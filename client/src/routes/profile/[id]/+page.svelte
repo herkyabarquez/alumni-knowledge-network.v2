@@ -60,15 +60,30 @@
 				</div>
 
 				<div class="flex-grow space-y-4">
-					<div class="flex items-start justify-between">
-						<div>
-							<h1 class="text-4xl font-bold">{profileUser.name}</h1>
-							<p class="text-neutral-500">{profileUser.email}</p>
+					<div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+						<div class="space-y-1">
+							<div class="flex flex-wrap items-center gap-3">
+								<h1 class="text-4xl font-bold">{profileUser.name || profileUser.email}</h1>
+								<span
+									class="rounded-full border px-3 py-1 text-[10px] font-black tracking-widest uppercase
+									{profileUser.role === 'SUPERADMIN'
+										? 'border-purple-500/20 bg-purple-500/10 text-purple-400'
+										: profileUser.role === 'ADMIN'
+											? 'border-indigo-500/20 bg-indigo-500/10 text-indigo-400'
+											: 'border-neutral-700 bg-neutral-800 text-neutral-500'}"
+								>
+									{profileUser.role || 'User'}
+								</span>
+							</div>
+							{#if profileUser.name && profileUser.name !== profileUser.email}
+								<p class="text-neutral-500">{profileUser.email}</p>
+							{/if}
 						</div>
+
 						{#if isMyProfile && !isEditing}
 							<button
 								onclick={() => (isEditing = true)}
-								class="rounded-full bg-neutral-800 px-6 py-2 text-white transition-all hover:bg-neutral-700"
+								class="flex-shrink-0 rounded-full bg-neutral-800 px-6 py-2 text-white transition-all hover:bg-neutral-700 active:scale-95"
 							>
 								Edit Profile
 							</button>
@@ -79,20 +94,25 @@
 						<div in:fade={{ duration: 200 }} class="space-y-4 pt-4">
 							<div class="grid grid-cols-2 gap-4">
 								<div>
-									<label class="mb-1 block text-xs font-semibold text-neutral-500 uppercase"
+									<label
+										for="industry"
+										class="mb-1 block text-xs font-semibold text-neutral-500 uppercase"
 										>Industry</label
 									>
 									<input
+										id="industry"
 										bind:value={editData.industry}
 										placeholder="e.g. Software Engineering"
 										class="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-4 py-2 text-white focus:border-indigo-500"
 									/>
 								</div>
 								<div>
-									<label class="mb-1 block text-xs font-semibold text-neutral-500 uppercase"
-										>Batch</label
+									<label
+										for="batch"
+										class="mb-1 block text-xs font-semibold text-neutral-500 uppercase">Batch</label
 									>
 									<input
+										id="batch"
 										bind:value={editData.batch}
 										placeholder="e.g. 2020"
 										class="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-4 py-2 text-white focus:border-indigo-500"
@@ -100,10 +120,11 @@
 								</div>
 							</div>
 							<div>
-								<label class="mb-1 block text-xs font-semibold text-neutral-500 uppercase"
+								<label for="bio" class="mb-1 block text-xs font-semibold text-neutral-500 uppercase"
 									>Bio</label
 								>
 								<textarea
+									id="bio"
 									bind:value={editData.bio}
 									placeholder="Tell us about yourself..."
 									rows="4"
@@ -119,7 +140,7 @@
 								</button>
 								<button
 									onclick={() => (isEditing = false)}
-									class="px-4 py-2 text-neutral-400 transition-colors hover:text-white"
+									class="text-neutral-400 transition-colors hover:text-white"
 								>
 									Cancel
 								</button>

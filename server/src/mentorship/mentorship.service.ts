@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
-import { RequestStatus } from '@prisma/client';
+import { RequestStatus } from '@akn/database';
 
 @Injectable()
 export class MentorshipService {
@@ -81,8 +81,14 @@ export class MentorshipService {
         OR: [{ studentId: userId }, { alumniId: userId }],
       },
       include: {
-        student: { select: { name: true, email: true } },
-        alumni: { select: { name: true, email: true } },
+        student: { select: { id: true, name: true, email: true } },
+        alumni: { select: { id: true, name: true, email: true } },
+        messages: {
+          orderBy: { createdAt: 'asc' },
+          include: {
+            sender: { select: { name: true, profilePic: true } },
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });

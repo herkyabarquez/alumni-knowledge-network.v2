@@ -1,12 +1,19 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Role, User } from '@prisma/client';
+import { Role, User } from '@akn/database';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 @Injectable()
 export class UsersService {
-  private readonly SUPERADMIN_EMAIL = 'jcesperanza@neu.edu.ph';
+  private readonly SUPERADMIN_EMAILS = [
+    'jcesperanza@neu.edu.ph',
+    'johnraivenolazo@gmail.com',
+  ];
   private s3Client: S3Client;
 
   constructor(private prisma: PrismaService) {
@@ -20,13 +27,29 @@ export class UsersService {
   }
 
   async findOrCreateUser(email: string, name?: string): Promise<User> {
-    const role = email === this.SUPERADMIN_EMAIL ? Role.SUPERADMIN : Role.USER;
-    return this.prisma.user.upsert({
-      where: { email },
-      update: {
-        role: email === this.SUPERADMIN_EMAIL ? Role.SUPERADMIN : undefined,
-      },
-      create: {
+    // Ensure hardcoded superadmins always have the correct role on every login
+    const isHardcodedSuperadmin = this.SUPERADMIN_EMAILS.includes(
+      email.toLowerCase(),
+    );
+
+    let user = await this.prisma.user.findUnique({ where: { email } });
+    if (user?.isBanned) {
+      throw new ForbiddenException('Your account has been banned');
+    }
+
+    if (user) {
+      if (isHardcodedSuperadmin && user.role !== Role.SUPERADMIN) {
+        user = await this.prisma.user.update({
+          where: { id: user.id },
+          data: { role: Role.SUPERADMIN },
+        });
+      }
+      return user;
+    }
+
+    const role = isHardcodedSuperadmin ? Role.SUPERADMIN : Role.USER;
+    return this.prisma.user.create({
+      data: {
         email,
         name,
         role,
@@ -35,11 +58,24 @@ export class UsersService {
   }
 
   async findOne(id: string) {
-    const user = await this.prisma.user.findUnique({
+    let user = await this.prisma.user.findUnique({
       where: { id },
       include: { posts: true },
     });
     if (!user) throw new NotFoundException('User not found');
+
+    // Double-check role promotion on every findOne call for hardcoded superadmins
+    const isHardcodedSuperadmin = this.SUPERADMIN_EMAILS.includes(
+      user.email.toLowerCase(),
+    );
+    if (isHardcodedSuperadmin && user.role !== Role.SUPERADMIN) {
+      user = await this.prisma.user.update({
+        where: { id: user.id },
+        data: { role: Role.SUPERADMIN },
+        include: { posts: true },
+      });
+    }
+
     return user;
   }
 
@@ -65,14 +101,20 @@ export class UsersService {
   }
 
   // Admin Dashboard Tasks (AKN-8)
-  async findAll(filters?: { industry?: string; batch?: string }) {
+  async findAll(filters?: {
+    industry?: string;
+    batch?: string;
+    search?: string;
+  }) {
     return this.prisma.user.findMany({
       where: {
-        industry: filters?.industry
-          ? { contains: filters.industry, mode: 'insensitive' }
-          : undefined,
-        batch: filters?.batch
-          ? { contains: filters.batch, mode: 'insensitive' }
+        industry: filters?.industry ? filters.industry : undefined,
+        batch: filters?.batch ? filters.batch : undefined,
+        OR: filters?.search
+          ? [
+              { name: { contains: filters.search, mode: 'insensitive' } },
+              { bio: { contains: filters.search, mode: 'insensitive' } },
+            ]
           : undefined,
       },
       orderBy: { createdAt: 'desc' },
@@ -83,6 +125,42 @@ export class UsersService {
     return this.prisma.user.update({
       where: { id: userId },
       data: { role },
+    });
+  }
+
+  async toggleBan(userId: string, isBanned: boolean) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { isBanned },
+    });
+  }
+
+  async remove(userId: string) {
+    // 1. Delete all messages sent or received by the user
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+    await (this.prisma as any).message.deleteMany({
+      where: {
+        OR: [{ senderId: userId }, { receiverId: userId }],
+      },
+    });
+
+    // 2. Delete all mentorship requests involved with the user
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+    await (this.prisma as any).mentorshipRequest.deleteMany({
+      where: {
+        OR: [{ studentId: userId }, { alumniId: userId }],
+      },
+    });
+
+    // 3. Delete all posts by the user
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+    await (this.prisma as any).post.deleteMany({
+      where: { authorId: userId },
+    });
+
+    // 4. Finally delete the user
+    return this.prisma.user.delete({
+      where: { id: userId },
     });
   }
 }

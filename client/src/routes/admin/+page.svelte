@@ -2,14 +2,16 @@
 	import { onMount } from 'svelte';
 	import { fly } from 'svelte/transition';
 	import { api } from '$lib/api';
-	import { user } from '$lib/authService';
-	import { type User } from '$lib/types';
+	import { isAuthenticated, user, loading as authLoading } from '$lib/authService';
+	import { goto } from '$app/navigation';
+	import { type User, type Role } from '$lib/types';
 
 	let users = $state<User[]>([]);
 	let loading = $state(true);
 	let error = $state('');
 
 	async function loadUsers() {
+		if (!$isAuthenticated) return;
 		try {
 			users = await api.get('/users');
 		} catch (e: unknown) {
@@ -19,7 +21,7 @@
 		}
 	}
 
-	async function changeRole(userId: string, role: string) {
+	async function handleRoleChange(userId: string, role: Role) {
 		try {
 			await api.patch(`/users/${userId}/role`, { role });
 			await loadUsers();
@@ -28,14 +30,101 @@
 		}
 	}
 
-	onMount(loadUsers);
+	async function handleDelete(userId: string) {
+		if (
+			!confirm(
+				'Are you sure you want to permanently delete this user? This action cannot be undone.'
+			)
+		)
+			return;
+		try {
+			await api.delete(`/users/${userId}`);
+			await loadUsers();
+		} catch (e: unknown) {
+			alert((e as Error).message);
+		}
+	}
+
+	async function handleToggleBan(userId: string, isBanned: boolean) {
+		const action = isBanned ? 'ban' : 'unban';
+		if (!confirm(`Are you sure you want to ${action} this user?`)) return;
+		try {
+			await api.patch(`/users/${userId}/ban`, { isBanned });
+			await loadUsers();
+		} catch (e: unknown) {
+			alert((e as Error).message);
+		}
+	}
+
+	onMount(() => {
+		if (!$authLoading && !$isAuthenticated) {
+			goto('/login');
+		} else if (!$authLoading && $isAuthenticated) {
+			loadUsers();
+		}
+	});
+
+	$effect(() => {
+		if (!$authLoading && !$isAuthenticated) {
+			goto('/login');
+		} else if (
+			!$authLoading &&
+			$isAuthenticated &&
+			$user?.role !== 'ADMIN' &&
+			$user?.role !== 'SUPERADMIN'
+		) {
+			goto('/feed');
+		}
+	});
 </script>
 
 <div class="mx-auto max-w-7xl px-4 py-12">
-	<div class="mb-12 flex items-center justify-between">
-		<div>
-			<h1 class="text-3xl font-bold text-white">Admin Dashboard</h1>
-			<p class="text-neutral-500">Manage users and system roles</p>
+	<div class="mb-12">
+		<div class="mb-2 flex items-center gap-4">
+			<div class="rounded-xl bg-indigo-500/10 p-2 text-indigo-400">
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					width="24"
+					height="24"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					><rect width="18" height="18" x="3" y="3" rx="2" /><path d="M9 3v18" /><path
+						d="m14 8 2 2-2 2"
+					/></svg
+				>
+			</div>
+			<h1 class="text-3xl font-bold tracking-tight text-white">Admin Control Center</h1>
+		</div>
+		<p class="text-neutral-500">
+			Manage user roles, monitor network activity, and enforce community standards.
+		</p>
+	</div>
+
+	<!-- Stats Grid -->
+	<div class="mb-12 grid grid-cols-1 gap-6 md:grid-cols-3">
+		<div class="rounded-2xl border border-neutral-800 bg-neutral-900/50 p-6">
+			<p class="text-uppercase mb-1 text-sm font-medium tracking-wider text-neutral-500">
+				Total Network Members
+			</p>
+			<p class="text-3xl font-bold text-white">{users.length}</p>
+		</div>
+		<div class="rounded-2xl border border-neutral-800 bg-neutral-900/50 p-6">
+			<p class="text-uppercase mb-1 text-sm font-medium tracking-wider text-neutral-500">
+				Admins & Staff
+			</p>
+			<p class="text-3xl font-bold text-indigo-400">
+				{users.filter((u) => u.role !== 'USER').length}
+			</p>
+		</div>
+		<div class="rounded-2xl border border-neutral-800 bg-neutral-900/50 p-6">
+			<p class="text-uppercase mb-1 text-sm font-medium tracking-wider text-neutral-500">
+				Active Roles
+			</p>
+			<p class="text-3xl font-bold text-emerald-400">3</p>
 		</div>
 	</div>
 
@@ -51,63 +140,143 @@
 			<p class="text-sm">{error}</p>
 		</div>
 	{:else}
-		<div class="overflow-x-auto rounded-3xl border border-neutral-800 bg-neutral-900/50">
-			<table class="w-full border-collapse text-left">
-				<thead>
-					<tr class="border-b border-neutral-800">
-						<th class="px-8 py-6 text-xs font-semibold tracking-wider text-neutral-500 uppercase"
-							>User</th
-						>
-						<th class="px-8 py-6 text-xs font-semibold tracking-wider text-neutral-500 uppercase"
-							>Email</th
-						>
-						<th class="px-8 py-6 text-xs font-semibold tracking-wider text-neutral-500 uppercase"
-							>Role</th
-						>
-						<th class="px-8 py-6 text-xs font-semibold tracking-wider text-neutral-500 uppercase"
-							>Actions</th
-						>
-					</tr>
-				</thead>
-				<tbody>
-					{#each users as u, i (u.id)}
-						<tr
-							in:fly={{ y: 10, duration: 200, delay: i * 30 }}
-							class="border-b border-neutral-800/50 transition-colors hover:bg-neutral-800/20"
-						>
-							<td class="px-8 py-4 font-medium text-white">{u.name || 'N/A'}</td>
-							<td class="px-8 py-4 text-sm text-neutral-400">{u.email}</td>
-							<td class="px-8 py-4">
-								<span
-									class="rounded-full px-3 py-1 text-[10px] font-bold tracking-tighter uppercase
-                  {u.role === 'SUPERADMIN'
-										? 'bg-purple-500 text-white'
-										: u.role === 'ADMIN'
-											? 'bg-indigo-500 text-white'
-											: 'bg-neutral-800 text-neutral-400'}"
-								>
-									{u.role}
-								</span>
-							</td>
-							<td class="px-8 py-4">
-								{#if u.id !== $user?.id && $user?.role === 'SUPERADMIN'}
-									<select
-										onchange={(e) => changeRole(u.id, e.target.value)}
-										class="rounded-lg border border-neutral-800 bg-neutral-950 px-2 py-1 text-xs outline-none focus:border-indigo-500"
-										value={u.role}
-									>
-										<option value="USER">Make User</option>
-										<option value="ADMIN">Make Admin</option>
-										<option value="SUPERADMIN">Make Superadmin</option>
-									</select>
-								{:else}
-									<span class="text-xs text-neutral-600">No actions</span>
-								{/if}
-							</td>
+		<div class="overflow-hidden rounded-3xl border border-neutral-800 bg-neutral-900/50 shadow-2xl">
+			<div class="border-b border-neutral-800 bg-neutral-800/30 px-8 py-4">
+				<h2 class="text-lg font-bold text-white">User Directory</h2>
+			</div>
+			<div class="overflow-x-auto">
+				<table class="w-full border-collapse text-left">
+					<thead>
+						<tr class="border-b border-neutral-800">
+							<th class="px-8 py-6 text-xs font-semibold tracking-wider text-neutral-500 uppercase"
+								>User</th
+							>
+							<th class="px-8 py-6 text-xs font-semibold tracking-wider text-neutral-500 uppercase"
+								>Email</th
+							>
+							<th class="px-8 py-6 text-xs font-semibold tracking-wider text-neutral-500 uppercase"
+								>Role</th
+							>
+							<th class="px-8 py-6 text-xs font-semibold tracking-wider text-neutral-500 uppercase"
+								>Actions</th
+							>
 						</tr>
-					{/each}
-				</tbody>
-			</table>
+					</thead>
+					<tbody>
+						{#each users as u, i (u.id)}
+							<tr
+								in:fly={{ y: 10, duration: 200, delay: i * 30 }}
+								class="border-b border-neutral-800/50 transition-colors hover:bg-neutral-800/20"
+							>
+								<td class="px-8 py-4 font-medium text-white">{u.name || 'N/A'}</td>
+								<td class="px-8 py-4 text-sm text-neutral-400">{u.email}</td>
+								<td class="px-8 py-4">
+									<div class="flex items-center gap-2">
+										<span
+											class="rounded-full px-3 py-1 text-[10px] font-bold tracking-tighter uppercase
+					{u.role === 'SUPERADMIN'
+												? 'bg-purple-500 text-white'
+												: u.role === 'ADMIN'
+													? 'bg-indigo-500 text-white'
+													: 'bg-neutral-800 text-neutral-400'}"
+										>
+											{u.role}
+										</span>
+										{#if u.isBanned}
+											<span
+												class="animate-pulse rounded-full bg-red-500 px-3 py-1 text-[10px] font-bold tracking-tighter text-white uppercase"
+											>
+												Banned
+											</span>
+										{/if}
+									</div>
+								</td>
+								<td class="px-8 py-4">
+									<div class="flex items-center gap-3">
+										{#if u.id !== $user?.id && u.role !== 'SUPERADMIN'}
+											<select
+												value={u.role}
+												onchange={(e) =>
+													handleRoleChange(u.id, (e.target as HTMLSelectElement).value as Role)}
+												class="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-xs text-neutral-300 transition-all hover:border-neutral-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+											>
+												<option value="USER">Make User</option>
+												<option value="ADMIN">Make Admin</option>
+												<option value="SUPERADMIN">Make Superadmin</option>
+											</select>
+
+											<button
+												onclick={() => handleToggleBan(u.id, !u.isBanned)}
+												class="rounded-lg p-2 transition-all {u.isBanned
+													? 'bg-emerald-500/10 text-emerald-400 hover:text-emerald-300'
+													: 'bg-orange-500/10 text-orange-400 hover:text-orange-300'}"
+												title={u.isBanned ? 'Unban User' : 'Ban User'}
+											>
+												{#if u.isBanned}
+													<svg
+														xmlns="http://www.w3.org/2000/svg"
+														width="18"
+														height="18"
+														viewBox="0 0 24 24"
+														fill="none"
+														stroke="currentColor"
+														stroke-width="2"
+														stroke-linecap="round"
+														stroke-linejoin="round"
+														><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" /><path
+															d="m9 12 2 2 4-4"
+														/></svg
+													>
+												{:else}
+													<svg
+														xmlns="http://www.w3.org/2000/svg"
+														width="18"
+														height="18"
+														viewBox="0 0 24 24"
+														fill="none"
+														stroke="currentColor"
+														stroke-width="2"
+														stroke-linecap="round"
+														stroke-linejoin="round"
+														><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path
+															d="M7 11V7a5 5 0 0 1 10 0v4"
+														/></svg
+													>
+												{/if}
+											</button>
+
+											<button
+												onclick={() => handleDelete(u.id)}
+												class="rounded-lg p-2 text-neutral-500 transition-all hover:bg-red-500/10 hover:text-red-400"
+												title="Delete User"
+											>
+												<svg
+													xmlns="http://www.w3.org/2000/svg"
+													width="18"
+													height="18"
+													viewBox="0 0 24 24"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													><path d="M3 6h18" /><path
+														d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"
+													/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /></svg
+												>
+											</button>
+										{:else}
+											<span class="text-[10px] text-neutral-500 italic opacity-50">
+												Protected Account
+											</span>
+										{/if}
+									</div>
+								</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
 		</div>
 	{/if}
 </div>

@@ -54,12 +54,14 @@
 			<!-- Noise Texture Overlay (Global) -->
 			<div
 				class="absolute inset-0 opacity-[0.03] mix-blend-overlay brightness-100 contrast-150"
-				style="background-image: url('https://grainy-gradients.vercel.app/noise.svg');"
+				style="background-image: url('/noise.svg');"
 			></div>
 		</div>
 
 		<div class="relative z-10 flex min-h-screen flex-col">
-			<Navbar />
+			{#if page.url.pathname !== '/banned'}
+				<Navbar />
+			{/if}
 			<main class="grid flex-grow">
 				{#key page.url.pathname}
 					<div
