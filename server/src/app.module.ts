@@ -20,6 +20,6 @@ import { ChatModule } from './chat/chat.module';
     ChatModule,
   ],
   controllers: [AppController],
-  providers: [AppService, PrismaService, UsersService],
+  providers: [AppService],
 })
 export class AppModule {}
