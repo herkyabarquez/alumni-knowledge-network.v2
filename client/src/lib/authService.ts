@@ -58,6 +58,14 @@ export async function login() {
 	await auth0.loginWithRedirect();
 }
 
+export async function signup() {
+	await auth0.loginWithRedirect({
+		authorizationParams: {
+			screen_hint: 'signup'
+		}
+	});
+}
+
 export async function logout() {
 	await auth0.logout({ logoutParams: { returnTo: window.location.origin } });
 }
