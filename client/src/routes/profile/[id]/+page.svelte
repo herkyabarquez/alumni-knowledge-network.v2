@@ -94,20 +94,24 @@
 						<div in:fade={{ duration: 200 }} class="space-y-4 pt-4">
 							<div class="grid grid-cols-2 gap-4">
 								<div>
-									<label class="mb-1 block text-xs font-semibold text-neutral-500 uppercase"
-										>Industry</label
+									<label
+										for="industry"
+										class="mb-1 block text-xs font-semibold text-neutral-500 uppercase">Industry</label
 									>
 									<input
+										id="industry"
 										bind:value={editData.industry}
 										placeholder="e.g. Software Engineering"
 										class="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-4 py-2 text-white focus:border-indigo-500"
 									/>
 								</div>
 								<div>
-									<label class="mb-1 block text-xs font-semibold text-neutral-500 uppercase"
-										>Batch</label
+									<label
+										for="batch"
+										class="mb-1 block text-xs font-semibold text-neutral-500 uppercase">Batch</label
 									>
 									<input
+										id="batch"
 										bind:value={editData.batch}
 										placeholder="e.g. 2020"
 										class="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-4 py-2 text-white focus:border-indigo-500"
@@ -115,10 +119,12 @@
 								</div>
 							</div>
 							<div>
-								<label class="mb-1 block text-xs font-semibold text-neutral-500 uppercase"
-									>Bio</label
+								<label
+									for="bio"
+									class="mb-1 block text-xs font-semibold text-neutral-500 uppercase">Bio</label
 								>
 								<textarea
+									id="bio"
 									bind:value={editData.bio}
 									placeholder="Tell us about yourself..."
 									rows="4"
@@ -134,7 +140,7 @@
 								</button>
 								<button
 									onclick={() => (isEditing = false)}
-									class="px-4 py-2 text-neutral-400 transition-colors hover:text-white"
+									class="text-neutral-400 transition-colors hover:text-white"
 								>
 									Cancel
 								</button>

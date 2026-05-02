@@ -55,7 +55,7 @@
 			</a>
 
 			<button
-				on:click={() => (window.location.href = '/login')}
+				onclick={() => (window.location.href = '/login')}
 				class="text-sm text-gray-500 transition-colors hover:text-white"
 			>
 				Return to Sign In
