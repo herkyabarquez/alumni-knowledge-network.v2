@@ -1,4 +1,8 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Role, User } from '@akn/database';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
@@ -97,16 +101,22 @@ export class UsersService {
   }
 
   // Admin Dashboard Tasks (AKN-8)
-  async findAll(filters?: { industry?: string; batch?: string; search?: string }) {
+  async findAll(filters?: {
+    industry?: string;
+    batch?: string;
+    search?: string;
+  }) {
     return this.prisma.user.findMany({
       where: {
         isBanned: false, // Don't show banned users in directory
         industry: filters?.industry ? filters.industry : undefined, // Exact match for category
         batch: filters?.batch ? filters.batch : undefined, // Exact match for batch
-        OR: filters?.search ? [
-          { name: { contains: filters.search, mode: 'insensitive' } },
-          { bio: { contains: filters.search, mode: 'insensitive' } }
-        ] : undefined
+        OR: filters?.search
+          ? [
+              { name: { contains: filters.search, mode: 'insensitive' } },
+              { bio: { contains: filters.search, mode: 'insensitive' } },
+            ]
+          : undefined,
       },
       orderBy: { createdAt: 'desc' },
     });

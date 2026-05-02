@@ -49,7 +49,9 @@
 				class="group flex w-full items-center justify-center gap-3 rounded-full bg-white px-6 py-3.5 text-sm font-bold text-black transition-all hover:bg-neutral-100 active:scale-[0.98] disabled:opacity-50"
 			>
 				{#if isLoading}
-					<div class="h-5 w-5 animate-spin rounded-full border-2 border-black/20 border-t-black"></div>
+					<div
+						class="h-5 w-5 animate-spin rounded-full border-2 border-black/20 border-t-black"
+					></div>
 				{:else}
 					<div class="flex h-5 w-5 items-center justify-center">
 						<svg viewBox="0 0 24 24" class="h-full w-full">

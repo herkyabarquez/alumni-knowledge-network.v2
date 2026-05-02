@@ -52,7 +52,7 @@ export class PostsService {
 
     // Hierarchy: Author, Admin, and Superadmin can delete
     const isAuthor = post.authorId === userId;
-    
+
     // Admin cannot delete Superadmin posts
     const isSuperadmin = userRole === Role.SUPERADMIN;
     const isAdmin = userRole === Role.ADMIN;
