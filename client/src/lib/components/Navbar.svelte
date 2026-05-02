@@ -1,4 +1,7 @@
 <script lang="ts">
+	// Auth state and actions are provided by the auth service store.
+	// `user` holds the current user object, `isAuthenticated` and `loading` are reactive booleans,
+	// and `login`/`logout` trigger the respective auth flows.
 	import { user, isAuthenticated, loading, login, logout } from '$lib/authService';
 	import { base } from '$app/paths';
 	import { fade, fly } from 'svelte/transition';
