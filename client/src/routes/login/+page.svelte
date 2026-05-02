@@ -1,7 +1,12 @@
 <script lang="ts">
 	import { login, signup } from '$lib/authService';
+	import { onMount } from 'svelte';
 
 	let isLoading = $state(false);
+
+	onMount(() => {
+		isLoading = false;
+	});
 
 	async function handleLogin() {
 		isLoading = true;

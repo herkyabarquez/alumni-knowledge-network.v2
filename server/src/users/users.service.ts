@@ -136,8 +136,26 @@ export class UsersService {
   }
 
   async remove(userId: string) {
-    // Delete associated posts and requests first or let Prisma handle it if configured
-    // Since we don't have cascade delete configured in schema, we do it manually or use prisma delete
+    // 1. Delete all messages sent or received by the user
+    await this.prisma.message.deleteMany({
+      where: {
+        OR: [{ senderId: userId }, { receiverId: userId }],
+      },
+    });
+
+    // 2. Delete all mentorship requests involved with the user
+    await this.prisma.mentorshipRequest.deleteMany({
+      where: {
+        OR: [{ studentId: userId }, { alumniId: userId }],
+      },
+    });
+
+    // 3. Delete all posts by the user
+    await this.prisma.post.deleteMany({
+      where: { authorId: userId },
+    });
+
+    // 4. Finally delete the user
     return this.prisma.user.delete({
       where: { id: userId },
     });
