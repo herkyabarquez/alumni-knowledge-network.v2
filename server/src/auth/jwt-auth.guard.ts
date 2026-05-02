@@ -24,7 +24,9 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     const request = context.switchToHttp().getRequest();
     const user = await this.usersService.findOne(request.user.id);
 
-    if (user.isBanned) {
+    // If user is not in DB yet, they can't be banned. 
+    // They will be synced later in the controller/auth flow.
+    if (user && user.isBanned) {
       throw new ForbiddenException('Your account has been banned');
     }
 

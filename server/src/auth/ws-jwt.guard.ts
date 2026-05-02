@@ -60,7 +60,7 @@ export class WsJwtGuard implements CanActivate {
 
       // Real-time ban check for WebSockets
       const user = await this.usersService.findOne(payload.sub);
-      if (user?.isBanned) {
+      if (user && user.isBanned) {
         throw new WsException('Your account has been banned');
       }
 
