@@ -96,7 +96,8 @@
 								<div>
 									<label
 										for="industry"
-										class="mb-1 block text-xs font-semibold text-neutral-500 uppercase">Industry</label
+										class="mb-1 block text-xs font-semibold text-neutral-500 uppercase"
+										>Industry</label
 									>
 									<input
 										id="industry"
@@ -119,9 +120,8 @@
 								</div>
 							</div>
 							<div>
-								<label
-									for="bio"
-									class="mb-1 block text-xs font-semibold text-neutral-500 uppercase">Bio</label
+								<label for="bio" class="mb-1 block text-xs font-semibold text-neutral-500 uppercase"
+									>Bio</label
 								>
 								<textarea
 									id="bio"

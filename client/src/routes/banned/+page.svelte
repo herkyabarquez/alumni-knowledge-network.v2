@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { authService } from '$lib/authService';
+	import * as authService from '$lib/authService';
 	import { fade, fly } from 'svelte/transition';
 
 	onMount(() => {
