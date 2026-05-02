@@ -1,18 +1,15 @@
-import { CanActivate, ExecutionContext, Injectable, Inject, forwardRef } from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { WsException } from '@nestjs/websockets';
 import { Socket } from 'socket.io';
 import * as jwt from 'jsonwebtoken';
 import { JwksClient } from 'jwks-rsa';
-import { UsersService } from '../users/users.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class WsJwtGuard implements CanActivate {
   private jwksClient: JwksClient;
 
-  constructor(
-    @Inject(forwardRef(() => UsersService))
-    private usersService: UsersService,
-  ) {
+  constructor(private prisma: PrismaService) {
     this.jwksClient = new JwksClient({
       jwksUri: `https://${process.env.AUTH0_DOMAIN}/.well-known/jwks.json`,
       cache: true,
@@ -58,8 +55,12 @@ export class WsJwtGuard implements CanActivate {
         );
       });
 
-      // Real-time ban check for WebSockets
-      const user = await this.usersService.findOne(payload.sub);
+      // Real-time ban check for WebSockets using Prisma directly
+      const user = await this.prisma.user.findUnique({
+        where: { id: payload.sub },
+        select: { isBanned: true }
+      });
+
       if (user && user.isBanned) {
         throw new WsException('Your account has been banned');
       }
