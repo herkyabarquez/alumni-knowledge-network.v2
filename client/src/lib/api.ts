@@ -26,6 +26,12 @@ async function request(path: string, method = 'GET', body?: any) {
 
 	if (!res.ok) {
 		const error = await res.json().catch(() => ({ message: 'An error occurred' }));
+		
+		// If user is banned, redirect to banned page
+		if (res.status === 403 && error.message?.toLowerCase().includes('banned')) {
+			window.location.href = '/banned';
+		}
+
 		throw new Error(error.message || 'An error occurred');
 	}
 

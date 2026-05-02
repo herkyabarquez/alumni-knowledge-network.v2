@@ -59,7 +59,9 @@
 		</div>
 
 		<div class="relative z-10 flex min-h-screen flex-col">
-			<Navbar />
+			{#if page.url.pathname !== '/banned'}
+				<Navbar />
+			{/if}
 			<main class="grid flex-grow">
 				{#key page.url.pathname}
 					<div
