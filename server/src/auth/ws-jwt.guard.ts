@@ -1,14 +1,18 @@
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable, Inject, forwardRef } from '@nestjs/common';
 import { WsException } from '@nestjs/websockets';
 import { Socket } from 'socket.io';
 import * as jwt from 'jsonwebtoken';
 import { JwksClient } from 'jwks-rsa';
+import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class WsJwtGuard implements CanActivate {
   private jwksClient: JwksClient;
 
-  constructor() {
+  constructor(
+    @Inject(forwardRef(() => UsersService))
+    private usersService: UsersService,
+  ) {
     this.jwksClient = new JwksClient({
       jwksUri: `https://${process.env.AUTH0_DOMAIN}/.well-known/jwks.json`,
       cache: true,
@@ -28,7 +32,7 @@ export class WsJwtGuard implements CanActivate {
 
       const cleanToken = token.replace('Bearer ', '');
 
-      const payload = await new Promise((resolve, reject) => {
+      const payload: any = await new Promise((resolve, reject) => {
         jwt.verify(
           cleanToken,
           (header, callback) => {
@@ -53,6 +57,12 @@ export class WsJwtGuard implements CanActivate {
           },
         );
       });
+
+      // Real-time ban check for WebSockets
+      const user = await this.usersService.findOne(payload.sub);
+      if (user?.isBanned) {
+        throw new WsException('Your account has been banned');
+      }
 
       client['user'] = payload;
       return true;
