@@ -1,12 +1,17 @@
+# For local deployments STRICTLY do not refer to this YAML.
+# This is only used for AWS Amplify Development refer to the following: https://docs.amplify.aws/
+# Please only configure this if you are planning to duplicate the following environment we used.
+
 # AWS Amplify Standard Build Spec (pnpm Monorepo compatible)
 version: 1
 frontend:
   phases:
     preBuild:
       commands:
+        - nvm use 22 || nvm install 22
         - corepack enable
-        - corepack prepare pnpm@latest --activate
-        - pnpm install --frozen-lockfile
+        - corepack prepare pnpm@10.33.0 --activate
+        - pnpm install
     build:
       commands:
         # Build only the client

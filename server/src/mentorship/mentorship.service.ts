@@ -5,11 +5,17 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
-import { RequestStatus } from '@prisma/client';
+import { RequestStatus } from '@akn/database';
 
 @Injectable()
 export class MentorshipService {
   private sesClient: SESClient;
+  private readonly SUPERADMIN_EMAILS = [
+    'olazoraiven@gmail.com',
+    'borisgamaliel.duque@neu.edu.ph',
+    'raivenolazo@gmail.com',
+    'johnraivenolazo@gmail.com',
+  ];
 
   constructor(private prisma: PrismaService) {
     this.sesClient = new SESClient({
@@ -49,40 +55,88 @@ export class MentorshipService {
   async respondToRequest(
     requestId: string,
     status: RequestStatus,
-    alumniId: string,
+    userId: string,
+    userRole?: string,
+    userEmail?: string,
   ) {
     const request = await this.prisma.mentorshipRequest.findUnique({
       where: { id: requestId },
-      include: { student: true },
+      include: { student: true, alumni: true },
     });
 
     if (!request) throw new NotFoundException('Request not found');
-    if (request.alumniId !== alumniId)
-      throw new ForbiddenException('Unauthorized');
+
+    const isEmailAdmin =
+      userEmail && this.SUPERADMIN_EMAILS.includes(userEmail.toLowerCase());
+    const isRoleAdmin =
+      userRole?.toUpperCase() === 'ADMIN' ||
+      userRole?.toUpperCase() === 'SUPERADMIN';
+
+    const isAdmin = isEmailAdmin || isRoleAdmin;
+    const isStudent = String(request.studentId) === String(userId);
+    const isAlumni = String(request.alumniId) === String(userId);
+
+    console.log('[MentorshipAuth] Detailed Check:', {
+      requestId,
+      attemptedBy: userId,
+      userRole,
+      userEmail,
+      isAdmin,
+      isStudent,
+      isAlumni,
+      requestStudentId: request.studentId,
+      requestAlumniId: request.alumniId,
+      requestedStatus: status,
+    });
+
+    if (status === RequestStatus.CANCELLED) {
+      if (!isStudent && !isAlumni && !isAdmin) {
+        const reason = `[VERSION-V100] Unauthorized: Not student(${isStudent}), alumni(${isAlumni}), or admin(${isAdmin}). User: ${userId}, Role: ${userRole}, Email: ${userEmail}`;
+        console.error('[MentorshipAuth] Forbidden:', reason);
+        throw new ForbiddenException(reason);
+      }
+    } else {
+      if (!isAlumni && !isAdmin) {
+        const reason = `[VERSION-V100] Unauthorized: Not alumni(${isAlumni}) or admin(${isAdmin}). User: ${userId}, Role: ${userRole}, Email: ${userEmail}`;
+        console.error('[MentorshipAuth] Forbidden:', reason);
+        throw new ForbiddenException(reason);
+      }
+    }
 
     const updatedRequest = await this.prisma.mentorshipRequest.update({
       where: { id: requestId },
       data: { status },
     });
 
-    // Notify student via SES
+    const notifyEmail =
+      userId === request.alumniId
+        ? request.student.email
+        : request.alumni.email;
+
+    // Notify the other user via SES
     await this.sendEmailNotification(
-      request.student.email,
+      notifyEmail,
       'Mentorship Request Status Updated',
-      `Your mentorship request has been ${status.toLowerCase()}.`,
+      `Your mentorship request status has been updated to ${status.toLowerCase()}.`,
     );
 
     return updatedRequest;
   }
 
   async getMyRequests(userId: string) {
-    return this.prisma.mentorshipRequest.findMany({
+    return await this.prisma.mentorshipRequest.findMany({
       where: {
         OR: [{ studentId: userId }, { alumniId: userId }],
       },
       include: {
-        student: { select: { name: true, email: true } },
-        alumni: { select: { name: true, email: true } },
+        student: { select: { id: true, name: true, email: true } },
+        alumni: { select: { id: true, name: true, email: true } },
+        messages: {
+          orderBy: { createdAt: 'asc' },
+          include: {
+            sender: { select: { name: true, profilePic: true } },
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });

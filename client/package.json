@@ -36,6 +36,7 @@
 		"vite": "^8.0.7"
 	},
 	"dependencies": {
-		"@auth0/auth0-spa-js": "^2.19.2"
+		"@auth0/auth0-spa-js": "^2.19.2",
+		"socket.io-client": "^4.8.3"
 	}
 }

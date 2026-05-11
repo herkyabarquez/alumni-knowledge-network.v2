@@ -2,16 +2,31 @@
 	import { onMount } from 'svelte';
 	import { fly } from 'svelte/transition';
 	import { api } from '$lib/api';
-	import { isAuthenticated } from '$lib/authService';
-
-	import { type Post } from '$lib/types';
+	import { isAuthenticated, user, loading as authLoading } from '$lib/authService';
+	import { goto } from '$app/navigation';
+	import {
+		displayUserType,
+		userTypeBadgeClass,
+		categoryBadgeClass,
+		type Post,
+		type Comment,
+		type PostReaction,
+		type ReactionType
+	} from '$lib/types';
+	import ThemedSelect from '$lib/components/ThemedSelect.svelte';
 
 	let posts = $state<Post[]>([]);
 	let loading = $state(true);
-	let newPost = $state({ title: '', content: '' });
+	let newPost = $state({ title: '', content: '', category: 'General' });
 	let error = $state('');
+	let activeCategory = $state('All');
+	let commentText = $state<Record<string, string>>({});
+	let isComposing = $state(false);
+
+	const categories = ['All', 'General', 'Tech', 'Career', 'Mentorship', 'Events'];
 
 	async function loadPosts() {
+		if (!$isAuthenticated) return;
 		try {
 			posts = await api.get('/posts');
 		} catch (e: unknown) {
@@ -27,112 +42,439 @@
 		try {
 			const created = await api.post('/posts', newPost);
 			posts = [created, ...posts];
-			newPost = { title: '', content: '' };
+			newPost = { title: '', content: '', category: 'General' };
+			isComposing = false;
 		} catch (e: unknown) {
 			error = (e as Error).message;
 		}
 	}
 
-	if (!import.meta.env.VITE_AUTH0_DOMAIN || !import.meta.env.VITE_AUTH0_CLIENT_ID) {
-		console.warn('Auth0 credentials missing. Authentication will be disabled.');
-		loading = false;
-	} else {
-		onMount(loadPosts);
+	async function handleAddComment(postId: string) {
+		const content = commentText[postId];
+		if (!content) return;
+		try {
+			const comment = await api.post(`/posts/${postId}/comments`, { content });
+			posts = posts.map((p) => {
+				if (p.id === postId) {
+					return { ...p, comments: [...(p.comments || []), comment] };
+				}
+				return p;
+			});
+			commentText[postId] = '';
+		} catch (e: unknown) {
+			alert((e as Error).message);
+		}
 	}
+
+	const REACTIONS: { type: ReactionType; label: string; emoji: string }[] = [
+		{ type: 'WOW', label: 'Wow', emoji: '😮' },
+		{ type: 'HELPFUL', label: 'Helpful', emoji: '🤝' },
+		{ type: 'INSIGHTFUL', label: 'Insightful', emoji: '💡' }
+	];
+
+	let openReactionPicker = $state<string | null>(null);
+
+	function reactionCounts(post: Post): Record<ReactionType, number> {
+		const counts: Record<ReactionType, number> = { WOW: 0, HELPFUL: 0, INSIGHTFUL: 0 };
+		for (const r of post.reactions || []) counts[r.type]++;
+		return counts;
+	}
+
+	function myReaction(post: Post): ReactionType | null {
+		if (!$user) return null;
+		return post.reactions?.find((r) => r.userId === $user!.id)?.type ?? null;
+	}
+
+	async function handleReact(postId: string, type: ReactionType) {
+		const post = posts.find((p) => p.id === postId);
+		if (!post) return;
+		const current = myReaction(post);
+		const next = current === type ? null : type;
+
+		const previousReactions = post.reactions || [];
+		const optimistic: PostReaction[] = previousReactions.filter((r) => r.userId !== $user?.id);
+		if (next && $user) {
+			optimistic.push({ id: 'optimistic', userId: $user.id, type: next });
+		}
+		posts = posts.map((p) => (p.id === postId ? { ...p, reactions: optimistic } : p));
+		openReactionPicker = null;
+
+		try {
+			const updated: PostReaction[] = await api.post(`/posts/${postId}/reactions`, {
+				type: next
+			});
+			posts = posts.map((p) => (p.id === postId ? { ...p, reactions: updated } : p));
+		} catch (e: unknown) {
+			posts = posts.map((p) => (p.id === postId ? { ...p, reactions: previousReactions } : p));
+			alert((e as Error).message);
+		}
+	}
+
+	async function handleDelete(postId: string) {
+		if (!confirm('Are you sure you want to delete this post?')) return;
+		try {
+			await api.delete(`/posts/${postId}`);
+			posts = posts.filter((p) => p.id !== postId);
+		} catch (e: unknown) {
+			alert((e as Error).message);
+		}
+	}
+
+	onMount(() => {
+		if (!$authLoading && !$isAuthenticated) {
+			goto('/login');
+		} else if (!$authLoading && $isAuthenticated) {
+			loadPosts();
+		}
+	});
+
+	let filteredPosts = $derived(
+		activeCategory === 'All' ? posts : posts.filter((p) => p.category === activeCategory)
+	);
 </script>
 
-<div class="mx-auto max-w-4xl px-4 py-12">
-	<div class="mb-12 flex items-center justify-between">
-		<h1 class="text-3xl font-bold text-white">Knowledge Feed</h1>
-		{#if $isAuthenticated}
-			<button
-				class="rounded-lg bg-indigo-600 px-4 py-2 text-white transition-colors hover:bg-indigo-700"
-			>
-				Create Post
-			</button>
-		{/if}
-	</div>
-
-	{#if $isAuthenticated}
-		<form
-			onsubmit={handleSubmit}
-			class="mb-12 space-y-4 rounded-2xl border border-neutral-800 bg-neutral-900/50 p-6"
+{#snippet commentSnippet(comment: Comment)}
+	<div class="flex gap-4 border-t border-white/5 pt-4">
+		<div
+			class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-xs font-light text-neutral-400"
 		>
-			<h2 class="mb-2 text-xl font-semibold text-white">Share your knowledge</h2>
-			<input
-				bind:value={newPost.title}
-				placeholder="Title"
-				class="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-4 py-2 text-white transition-colors focus:border-indigo-500 focus:outline-none"
-			/>
-			<textarea
-				bind:value={newPost.content}
-				placeholder="What's on your mind?"
-				rows="4"
-				class="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-4 py-2 text-white transition-colors focus:border-indigo-500 focus:outline-none"
-			></textarea>
-			{#if error}
-				<p class="text-sm text-red-500">{error}</p>
+			{#if comment.author?.profilePic}
+				<img
+					src={comment.author.profilePic}
+					alt={comment.author.name}
+					class="h-full w-full rounded-full object-cover"
+				/>
+			{:else}
+				{comment.author?.name?.charAt(0) || 'U'}
 			{/if}
-			<button
-				type="submit"
-				class="rounded-lg bg-white px-6 py-2 font-semibold text-black transition-all hover:bg-neutral-200 active:scale-95"
-			>
-				Post
-			</button>
-		</form>
-	{/if}
-
-	{#if $isAuthenticated}
-		{#if loading}
-			<div class="flex justify-center py-12">
-				<div
-					class="h-8 w-8 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent"
-				></div>
+		</div>
+		<div class="flex-grow pb-4">
+			<div class="mb-1 flex items-center gap-3">
+				<span class="text-sm font-medium text-white">{comment.author?.name}</span>
+				<span class="text-[10px] font-bold tracking-widest text-neutral-600 uppercase"
+					>{new Date(comment.createdAt).toLocaleDateString()}</span
+				>
 			</div>
-		{:else if posts.length === 0}
-			<div
-				class="rounded-3xl border border-dashed border-neutral-800 bg-neutral-900/30 py-20 text-center"
-			>
-				<p class="text-neutral-500">No posts yet. Be the first to share something!</p>
+			<p class="text-sm leading-relaxed text-neutral-400">{comment.content}</p>
+		</div>
+	</div>
+{/snippet}
+
+<svelte:window
+	onclick={(e) => {
+		const target = e.target as HTMLElement;
+		if (!target.closest('[data-reaction-root]')) {
+			openReactionPicker = null;
+		}
+	}}
+/>
+
+<div class="mx-auto max-w-4xl px-6 py-20 font-sans">
+	{#if $isAuthenticated}
+		<header class="mb-16 border-b border-white/10 pb-10">
+			<h1 class="text-4xl font-light tracking-tight text-white sm:text-5xl">Knowledge Feed</h1>
+			<p class="mt-6 max-w-2xl text-lg leading-relaxed font-light text-neutral-400">
+				Industry insights, mentorship advice, and campus updates from the alumni network.
+			</p>
+
+			<div class="scrollbar-hide mt-12 flex gap-8 overflow-x-auto pb-2">
+				{#each categories as cat (cat)}
+					<button
+						onclick={() => (activeCategory = cat)}
+						class="text-xs font-bold tracking-widest whitespace-nowrap uppercase transition-colors {activeCategory ===
+						cat
+							? 'text-white'
+							: 'text-neutral-600 hover:text-neutral-400'}"
+					>
+						{cat}
+					</button>
+				{/each}
+			</div>
+		</header>
+
+		<form onsubmit={handleSubmit} class="mb-24 space-y-6">
+			{#if !isComposing}
+				<button
+					type="button"
+					onclick={() => (isComposing = true)}
+					class="w-full border-b border-white/5 bg-transparent py-4 text-left text-xl font-light text-neutral-500 transition-colors hover:border-white/20 hover:text-neutral-400"
+				>
+					Share your expertise with the network...
+				</button>
+			{:else}
+				<div transition:fly={{ y: 20, duration: 300 }}>
+					<div class="flex items-center justify-between gap-4">
+						<h2 class="text-[10px] font-bold tracking-widest text-neutral-500 uppercase">
+							Share Expertise
+						</h2>
+						<div class="w-44">
+							<ThemedSelect
+								bind:value={newPost.category}
+								size="sm"
+								ariaLabel="Post category"
+								options={categories
+									.filter((c) => c !== 'All')
+									.map((c) => ({ value: c, label: c }))}
+							/>
+						</div>
+					</div>
+
+					<input
+						bind:value={newPost.title}
+						placeholder="Topic Title"
+						class="mt-4 w-full border-b border-white/10 bg-transparent py-4 text-xl font-light text-white placeholder-neutral-700 transition-colors focus:border-white focus:outline-none"
+					/>
+
+					<textarea
+						bind:value={newPost.content}
+						placeholder="What insights do you want to share with the community?"
+						rows="4"
+						class="w-full resize-none bg-transparent py-6 text-sm leading-relaxed font-light text-neutral-300 placeholder-neutral-700 focus:outline-none"
+					></textarea>
+
+					{#if error}
+						<p class="text-[10px] font-bold tracking-widest text-red-500 uppercase">{error}</p>
+					{/if}
+
+					<div class="flex items-center justify-end gap-6 border-t border-white/5 pt-6">
+						<button
+							type="button"
+							onclick={() => (isComposing = false)}
+							class="text-[10px] font-bold tracking-widest text-neutral-600 uppercase transition-colors hover:text-white"
+						>
+							Cancel
+						</button>
+						<button
+							type="submit"
+							class="text-[10px] font-bold tracking-widest text-white uppercase underline underline-offset-8 hover:text-neutral-300"
+						>
+							Publish Post
+						</button>
+					</div>
+				</div>
+			{/if}
+		</form>
+
+		{#if loading}
+			<div class="flex flex-col border-t border-white/10 pt-16">
+				{#each Array(3) as _, i (i)}
+					<div class="mb-16 space-y-4">
+						<div class="h-4 w-32 animate-pulse bg-white/5"></div>
+						<div class="h-6 w-3/4 animate-pulse bg-white/5"></div>
+						<div class="h-20 w-full animate-pulse bg-white/5"></div>
+					</div>
+				{/each}
+			</div>
+		{:else if filteredPosts.length === 0}
+			<div class="border-t border-white/10 pt-16 text-center">
+				<p class="text-sm font-light text-neutral-600 italic">
+					No posts found in {activeCategory}.
+				</p>
 			</div>
 		{:else}
-			<div class="space-y-6">
-				{#each posts as post, i (post.id)}
-					<div
-						in:fly={{ y: 20, duration: 300, delay: i * 50 }}
-						class="group rounded-2xl border border-neutral-800 bg-neutral-900/50 p-8 transition-all hover:border-neutral-700"
+			<div class="flex flex-col border-t border-white/10 pt-12">
+				{#each filteredPosts as post, i (post.id)}
+					<article
+						in:fly={{ y: 20, duration: 400, delay: i * 50 }}
+						class="group mb-16 border-b border-white/5 pb-16 last:mb-0 last:border-0 last:pb-0"
 					>
-						<div class="mb-4 flex items-start justify-between">
-							<div>
-								<h3
-									class="mb-1 text-2xl font-bold text-white transition-colors group-hover:text-indigo-400"
+						<div class="mb-8 flex items-start justify-between">
+							<div class="flex items-center gap-6">
+								<div
+									class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-sm font-light text-neutral-400"
 								>
-									{post.title}
-								</h3>
-								<div class="flex items-center gap-2 text-sm text-neutral-500">
-									<span class="font-medium text-neutral-300"
-										>{post.author?.name || 'Anonymous'}</span
+									{#if post.author?.profilePic}
+										<img
+											src={post.author.profilePic}
+											alt={post.author.name}
+											class="h-full w-full rounded-full object-cover"
+										/>
+									{:else}
+										{post.author?.name?.charAt(0) || 'U'}
+									{/if}
+								</div>
+								<div>
+									<div class="flex items-center gap-3">
+										<span class="text-base font-medium text-white"
+											>{post.author?.name || 'Anonymous'}</span
+										>
+										{#if post.author?.isExpert}
+											<span
+												class="bg-white px-1.5 py-0.5 text-[9px] font-bold tracking-widest text-black uppercase"
+												>Expert</span
+											>
+										{/if}
+									</div>
+									<div class="mt-1.5 flex flex-wrap items-center gap-1.5">
+										{#if displayUserType(post.author)}
+											<span
+												class="rounded-full border px-2.5 py-0.5 text-[9px] font-black tracking-[0.18em] uppercase {userTypeBadgeClass(
+													post.author
+												)}"
+											>
+												{displayUserType(post.author)}
+											</span>
+										{/if}
+										{#if post.category}
+											<span
+												class="rounded-full border px-2.5 py-0.5 text-[9px] font-black tracking-[0.18em] uppercase {categoryBadgeClass(
+													post.category
+												)}"
+											>
+												{post.category}
+											</span>
+										{/if}
+									</div>
+									<p class="mt-1 text-sm text-neutral-500">
+										{post.author?.industry || 'General'} •
+										<span class="text-[10px] font-bold tracking-widest uppercase"
+											>{new Date(post.createdAt).toLocaleDateString()}</span
+										>
+									</p>
+								</div>
+							</div>
+
+							{#if $user?.id === post.authorId || $user?.id === post.author?.id || $user?.role === 'ADMIN' || $user?.role === 'SUPERADMIN'}
+								<button
+									onclick={() => handleDelete(post.id)}
+									class="text-xs font-bold tracking-widest text-neutral-600 uppercase transition-colors hover:text-red-400"
+								>
+									Delete
+								</button>
+							{/if}
+						</div>
+
+						<div class="mb-8 sm:ml-[4.5rem]">
+							<span
+								class="mb-4 block text-[10px] font-bold tracking-widest text-neutral-500 uppercase"
+								>{post.category}</span
+							>
+							<h3
+								class="mb-4 text-2xl font-medium text-white transition-colors group-hover:text-indigo-400"
+							>
+								{post.title}
+							</h3>
+							<p class="text-base leading-relaxed font-light whitespace-pre-line text-neutral-400">
+								{post.content}
+							</p>
+						</div>
+
+						<div class="sm:ml-[4.5rem]">
+							{#snippet reactionBar(p: Post)}
+								{@const counts = reactionCounts(p)}
+								{@const mine = myReaction(p)}
+								{@const total = (p.reactions || []).length}
+								<div class="mb-6 flex flex-wrap items-center gap-3">
+									<div class="relative" data-reaction-root>
+										<button
+											onclick={() => (openReactionPicker = openReactionPicker === p.id ? null : p.id)}
+											class="flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-bold tracking-wide uppercase transition-all {mine
+												? 'border-white/30 bg-white/10 text-white'
+												: 'border-white/10 bg-white/5 text-neutral-400 hover:border-white/20 hover:bg-white/10 hover:text-white'}"
+										>
+											{#if mine}
+												{@const r = REACTIONS.find((x) => x.type === mine)!}
+												<span>{r.emoji}</span>
+												<span>{r.label}</span>
+											{:else}
+												<span>+ React</span>
+											{/if}
+										</button>
+										{#if openReactionPicker === p.id}
+											<div
+												in:fly={{ y: 6, duration: 150 }}
+												class="absolute bottom-full left-0 z-10 mb-2 flex gap-1 rounded-full border border-white/10 bg-neutral-900 p-1.5 shadow-2xl"
+											>
+												{#each REACTIONS as r (r.type)}
+													<button
+														onclick={() => handleReact(p.id, r.type)}
+														title={r.label}
+														class="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold text-neutral-300 transition-all hover:scale-110 hover:bg-white/10 hover:text-white"
+													>
+														<span class="text-base">{r.emoji}</span>
+														<span class="hidden sm:inline">{r.label}</span>
+													</button>
+												{/each}
+											</div>
+										{/if}
+									</div>
+									{#if total > 0}
+										<div class="flex items-center gap-2">
+											{#each REACTIONS as r (r.type)}
+												{#if counts[r.type] > 0}
+													<span
+														class="flex items-center gap-1 rounded-full border border-white/5 bg-white/5 px-2.5 py-1 text-[11px] font-medium text-neutral-300"
+													>
+														<span>{r.emoji}</span>
+														<span>{counts[r.type]}</span>
+													</span>
+												{/if}
+											{/each}
+										</div>
+									{/if}
+								</div>
+							{/snippet}
+							{@render reactionBar(post)}
+
+							<div
+								class="mb-8 flex items-center gap-2 text-xs font-bold tracking-widest text-neutral-600 uppercase"
+							>
+								{post.comments?.length || 0} Comments
+							</div>
+
+							{#if post.comments && post.comments.length > 0}
+								<div class="mb-8 space-y-2">
+									{#each post.comments as comment (comment.id)}
+										{@render commentSnippet(comment)}
+									{/each}
+								</div>
+							{/if}
+
+							<div class="flex items-start gap-4">
+								<div
+									class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-xs font-light text-neutral-400"
+								>
+									{#if $user?.profilePic}
+										<img
+											src={$user.profilePic}
+											alt={$user.name}
+											class="h-full w-full rounded-full object-cover"
+										/>
+									{:else}
+										{$user?.name?.charAt(0) || 'U'}
+									{/if}
+								</div>
+								<div class="flex flex-grow flex-col gap-3 sm:flex-row sm:items-center">
+									<input
+										type="text"
+										bind:value={commentText[post.id]}
+										placeholder="Write a comment..."
+										class="w-full border-b border-white/10 bg-transparent py-2 text-sm font-light text-white transition-colors focus:border-white focus:outline-none"
+										onkeydown={(e) => e.key === 'Enter' && handleAddComment(post.id)}
+									/>
+									<button
+										onclick={() => handleAddComment(post.id)}
+										class="text-sm font-medium text-white underline-offset-4 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+										disabled={!commentText[post.id]}
 									>
-									<span>•</span>
-									<span>{post.author?.industry || 'General'}</span>
-									<span>•</span>
-									<span>{new Date(post.createdAt).toLocaleDateString()}</span>
+										Post
+									</button>
 								</div>
 							</div>
 						</div>
-						<p class="line-clamp-3 leading-relaxed text-neutral-400">
-							{post.content}
-						</p>
-					</div>
+					</article>
 				{/each}
 			</div>
 		{/if}
 	{:else}
-		<div class="rounded-3xl border border-neutral-800 bg-neutral-900/30 py-20 text-center">
-			<p class="mb-6 text-neutral-400">Please sign in to view the knowledge feed.</p>
+		<div class="flex min-h-[60vh] flex-col items-center justify-center text-center">
+			<h2 class="mb-6 text-5xl font-light tracking-tight text-white">Knowledge Feed</h2>
+			<p class="mb-12 max-w-md text-lg leading-relaxed font-light text-neutral-500">
+				Sign in to access industry insights, mentorship advice, and campus updates.
+			</p>
 			<button
 				onclick={() => (window.location.href = '/login')}
-				class="rounded-full bg-white px-8 py-2 font-bold text-black transition-all hover:bg-neutral-200"
+				class="bg-white px-10 py-4 text-sm font-medium text-black transition-transform hover:scale-105"
 			>
 				Sign In
 			</button>

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { base } from '$app/paths';
+	import { isAuthenticated, login } from '$lib/authService';
 	const title = 'Alumni Knowledge Network';
 </script>
 
@@ -29,12 +30,21 @@
 					professional networks through the SECI model.
 				</p>
 				<div class="mt-10 flex items-center justify-center gap-x-6">
-					<a
-						href="{base}/login"
-						class="rounded-full bg-white px-8 py-3.5 text-sm font-semibold text-black shadow-sm transition-all hover:bg-neutral-200 active:scale-95"
-					>
-						Get Started
-					</a>
+					{#if $isAuthenticated}
+						<a
+							href={`${base}/feed`}
+							class="rounded-full bg-white px-8 py-3.5 text-sm font-semibold text-black shadow-sm transition-all hover:bg-neutral-200 active:scale-95"
+						>
+							Enter Network
+						</a>
+					{:else}
+						<button
+							onclick={login}
+							class="rounded-full bg-white px-8 py-3.5 text-sm font-semibold text-black shadow-sm transition-all hover:bg-neutral-200 active:scale-95"
+						>
+							Get Started
+						</button>
+					{/if}
 					<a
 						href="#about"
 						class="text-sm leading-6 font-semibold text-white transition-colors hover:text-neutral-300"
@@ -44,30 +54,6 @@
 				</div>
 			</div>
 		</div>
-	</div>
-
-	<!-- Features / Stats -->
-	<div class="mx-auto max-w-7xl px-6 pb-32 lg:px-8">
-		<dl class="grid grid-cols-1 gap-x-8 gap-y-16 text-center lg:grid-cols-3">
-			<div class="mx-auto flex max-w-xs flex-col gap-y-4">
-				<dt class="text-base leading-7 text-neutral-400">Verified Alumni</dt>
-				<dd class="order-first text-3xl font-semibold tracking-tight text-white sm:text-5xl">
-					500+
-				</dd>
-			</div>
-			<div class="mx-auto flex max-w-xs flex-col gap-y-4">
-				<dt class="text-base leading-7 text-neutral-400">Mentorship Pairs</dt>
-				<dd class="order-first text-3xl font-semibold tracking-tight text-white sm:text-5xl">
-					1.2k
-				</dd>
-			</div>
-			<div class="mx-auto flex max-w-xs flex-col gap-y-4">
-				<dt class="text-base leading-7 text-neutral-400">Success Rate</dt>
-				<dd class="order-first text-3xl font-semibold tracking-tight text-white sm:text-5xl">
-					98%
-				</dd>
-			</div>
-		</dl>
 	</div>
 
 	<!-- About / SECI Model Section -->

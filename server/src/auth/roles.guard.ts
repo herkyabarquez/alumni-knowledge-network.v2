@@ -1,6 +1,6 @@
 import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { Role } from '@prisma/client';
+import { Role } from '@akn/database';
 import { ROLES_KEY } from './roles.decorator';
 
 @Injectable()
@@ -15,7 +15,9 @@ export class RolesGuard implements CanActivate {
     if (!requiredRoles) {
       return true;
     }
-    const { user } = context.switchToHttp().getRequest();
+    const { user } = context
+      .switchToHttp()
+      .getRequest<{ user: { role: Role } }>();
 
     // Superadmin override
     if (user?.role === Role.SUPERADMIN) return true;

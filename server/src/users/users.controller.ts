@@ -9,12 +9,18 @@ import {
   Post,
   ForbiddenException,
   Query,
+  Delete,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
-import { Role } from '@prisma/client';
+import { Role, UserStatus, UserType, User } from '@akn/database';
+
+interface AuthenticatedRequest extends Request {
+  user: { id: string; email: string; role: Role; name?: string };
+}
 
 @Controller('users')
 export class UsersController {
@@ -22,8 +28,15 @@ export class UsersController {
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  getMe(@Req() req: any) {
+  getMe(@Req() req: AuthenticatedRequest) {
     return this.usersService.findOne(req.user.id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.SUPERADMIN)
+  @Get('stats')
+  getStats() {
+    return this.usersService.getStats();
   }
 
   @Get(':id')
@@ -33,30 +46,177 @@ export class UsersController {
 
   @UseGuards(JwtAuthGuard)
   @Patch('me')
-  updateMe(@Req() req: any, @Body() body: any) {
-    // Prevent self-role changing via this endpoint
-    delete body.role;
-    return this.usersService.update(req.user.id, body);
+  updateMe(@Req() req: AuthenticatedRequest, @Body() body: Partial<User>) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { role, status, ...updateData } = body;
+    return this.usersService.update(req.user.id, updateData);
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('profile-pic-upload')
-  getUploadUrl(@Req() req: any, @Body() body: { fileName: string }) {
-    return this.usersService.generatePresignedUrl(req.user.id, body.fileName);
+  async uploadProfilePic(
+    @Req() req: AuthenticatedRequest,
+    @Body()
+    body: { fileName: string; contentType?: string; dataBase64: string },
+  ) {
+    const result = await this.usersService.uploadProfilePicture(
+      req.user.id,
+      body.fileName,
+      body.contentType,
+      body.dataBase64,
+    );
+
+    // Local-storage fallback returns a relative `/uploads/...` URL because
+    // the service can't see the inbound request. Resolve it to an absolute
+    // URL here so the value persisted in `profilePic` works across pages
+    // without each renderer needing to know about the API origin.
+    if (result.publicUrl.startsWith('/')) {
+      const protocol =
+        (req.headers['x-forwarded-proto'] as string | undefined) ||
+        (req.protocol as string);
+      const host = req.get('host');
+      if (host) {
+        return {
+          ...result,
+          publicUrl: `${protocol}://${host}${result.publicUrl}`,
+        };
+      }
+    }
+    return result;
   }
 
   @Get()
   findAll(
     @Query('industry') industry?: string,
     @Query('batch') batch?: string,
+    @Query('status') status?: UserStatus,
+    @Query('userType') userType?: UserType,
+    @Query('search') search?: string,
   ) {
-    return this.usersService.findAll({ industry, batch });
+    return this.usersService.findAll({
+      industry,
+      batch,
+      status,
+      userType,
+      search,
+    });
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.SUPERADMIN)
+  @Patch(':id/status')
+  async updateStatus(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') targetId: string,
+    @Body() body: { status: UserStatus },
+  ) {
+    const targetUser = await this.usersService.findOne(targetId);
+    if (
+      targetUser.role === Role.SUPERADMIN &&
+      req.user.role !== Role.SUPERADMIN
+    ) {
+      throw new ForbiddenException(
+        'Only Superadmins can update Superadmin status',
+      );
+    }
+    return this.usersService.updateStatus(targetId, body.status);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.SUPERADMIN)
+  @Patch(':id/role')
+  async changeRole(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') targetId: string,
+    @Body() body: { role: Role },
+  ) {
+    const actorRole = req.user.role;
+    const actorId = req.user.id;
+    const targetUser = await this.usersService.findOne(targetId);
+
+    if (actorRole === Role.ADMIN) {
+      if (
+        targetUser.role !== Role.USER ||
+        (body.role !== Role.USER && body.role !== Role.ADMIN)
+      ) {
+        throw new ForbiddenException('Admins can only manage normal Users');
+      }
+    }
+
+    if (targetUser.role === Role.SUPERADMIN) {
+      if (actorId === targetId) {
+        throw new ForbiddenException(
+          'You cannot change your own role to avoid accidental lockout',
+        );
+      }
+      if (body.role !== Role.SUPERADMIN) {
+        throw new ForbiddenException(
+          'Superadmin roles are protected and cannot be downgraded',
+        );
+      }
+    }
+
+    return this.usersService.changeRole(targetId, body.role);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.SUPERADMIN)
+  @Patch(':id/ban')
+  async toggleBan(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') targetId: string,
+    @Body() body: { isBanned: boolean },
+  ) {
+    const actorRole = req.user.role;
+    const targetUser = await this.usersService.findOne(targetId);
+
+    if (actorRole === Role.ADMIN && targetUser.role === Role.SUPERADMIN) {
+      throw new ForbiddenException('Admins cannot ban Superadmins');
+    }
+
+    if (req.user.id === targetId) {
+      throw new ForbiddenException('You cannot ban yourself');
+    }
+
+    return this.usersService.toggleBan(targetId, body.isBanned);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.SUPERADMIN)
+  @Patch(':id')
+  async adminUpdateUser(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') targetId: string,
+    @Body() body: { userType?: UserType; isExpert?: boolean },
+  ) {
+    return this.usersService.adminUpdate(targetId, body);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SUPERADMIN)
-  @Patch(':id/role')
-  changeRole(@Param('id') id: string, @Body() body: { role: Role }) {
-    return this.usersService.changeRole(id, body.role);
+  @Post()
+  async createManually(
+    @Body()
+    body: {
+      email: string;
+      name?: string;
+      role?: Role;
+      userType?: UserType;
+      industry?: string;
+      batch?: string;
+      bio?: string;
+    },
+  ) {
+    if (!body?.email) {
+      throw new ForbiddenException('Email is required');
+    }
+    return this.usersService.adminCreate(body);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.SUPERADMIN)
+  @Delete(':id')
+  async remove(@Param('id') id: string) {
+    return this.usersService.remove(id);
   }
 }
